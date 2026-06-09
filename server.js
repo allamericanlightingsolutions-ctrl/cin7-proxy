@@ -128,6 +128,60 @@ app.get('/api/catalog', async (req, res) => {
   }
 });
 
+// POST /api/shipping-rates — get ShipStation rates
+app.post('/api/shipping-rates', async (req, res) => {
+  try {
+    const { toPostalCode, toCountry, weightLbs } = req.body;
+    if (!toPostalCode) return res.status(400).json({ success: false, error: 'toPostalCode required' });
+
+    const SS_KEY = process.env.SS_KEY;
+    const SS_SECRET = process.env.SS_SECRET;
+    const ssAuth = Buffer.from(`${SS_KEY}:${SS_SECRET}`).toString('base64');
+
+    // Get available carriers first
+    const carriersRes = await fetch('https://ssapi.shipstation.com/carriers', {
+      headers: { 'Authorization': `Basic ${ssAuth}`, 'Content-Type': 'application/json' }
+    });
+    const carriersData = await carriersRes.json();
+    const carriers = Array.isArray(carriersData) ? carriersData : [];
+
+    // Fetch rates for each carrier in parallel
+    const weight = weightLbs || 1;
+    const rateRequests = carriers.map(carrier =>
+      fetch('https://ssapi.shipstation.com/shipments/getrates', {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${ssAuth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          carrierCode: carrier.code,
+          fromPostalCode: '33325',
+          toCountry: toCountry || 'US',
+          toPostalCode: toPostalCode,
+          weight: { value: weight, units: 'pounds' },
+          dimensions: { units: 'inches', length: 12, width: 10, height: 8 }
+        })
+      }).then(r => r.json()).catch(() => [])
+    );
+
+    const allRates = await Promise.all(rateRequests);
+    const flatRates = allRates.flat().filter(r => r && r.shipmentCost !== undefined);
+
+    // Sort by total cost
+    flatRates.sort((a, b) => (a.shipmentCost + a.otherCost) - (b.shipmentCost + b.otherCost));
+
+    // Return top 5 cheapest options
+    const top5 = flatRates.slice(0, 5).map(r => ({
+      carrier: r.carrierCode,
+      service: r.serviceName,
+      cost: parseFloat((r.shipmentCost + r.otherCost).toFixed(2)),
+      days: r.transitDays || null
+    }));
+
+    res.json({ success: true, rates: top5 });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ status: 'AALS Cin7 Proxy running ✅', timestamp: new Date().toISOString() });
