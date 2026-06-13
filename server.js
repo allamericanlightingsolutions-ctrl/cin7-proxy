@@ -25,7 +25,7 @@ async function fetchAllPages(endpoint) {
   let allResults = [];
 
   while (true) {
-    const url = `https://inventory.dearsystems.com/ExternalApi/v2/${endpoint}?limit=${limit}&page=${page}`;
+    const url = `https://api.cin7.com/api/v1/${endpoint}?rows=${limit}&page=${page}`;
     const res = await fetch(url, {
       headers: {
         'Authorization': authHeader(),
@@ -41,7 +41,8 @@ async function fetchAllPages(endpoint) {
     const data = await res.json();
 
     // Cin7 returns different root keys depending on endpoint
-    const items = data.ProductList || data.Products || data.BranchList ||
+    const items = Array.isArray(data) ? data : 
+                  data.ProductList || data.Products || data.BranchList ||
                   data.Branches || data.StockList || data.Stock || [];
 
     if (!items || items.length === 0) break;
@@ -56,7 +57,7 @@ async function fetchAllPages(endpoint) {
 // GET /api/products — fetch all products
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await fetchAllPages('product');
+    const products = await fetchAllPages('products');
     res.json({ success: true, count: products.length, products });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -66,7 +67,7 @@ app.get('/api/products', async (req, res) => {
 // GET /api/stock — fetch stock levels
 app.get('/api/stock', async (req, res) => {
   try {
-    const stock = await fetchAllPages('ref/product/stock');
+    const stock = await fetchAllPages('products');
     res.json({ success: true, count: stock.length, stock });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -76,7 +77,7 @@ app.get('/api/stock', async (req, res) => {
 // GET /api/branches — fetch all branches/locations
 app.get('/api/branches', async (req, res) => {
   try {
-    const url = `https://inventory.dearsystems.com/ExternalApi/v2/ref/branch`;
+    const url = `https://api.cin7.com/api/v1/ref/branch`;
     const res2 = await fetch(url, {
       headers: {
         'Authorization': authHeader(),
@@ -94,8 +95,8 @@ app.get('/api/branches', async (req, res) => {
 app.get('/api/catalog', async (req, res) => {
   try {
     const [products, stock] = await Promise.all([
-      fetchAllPages('product'),
-      fetchAllPages('ref/product/stock').catch(() => [])
+      fetchAllPages('products'),
+      fetchAllPages('products').catch(() => [])
     ]);
 
     // Map stock by SKU
