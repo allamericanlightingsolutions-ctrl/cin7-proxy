@@ -5,45 +5,60 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Your Cin7 credentials (set these as environment variables in Render)
 const CIN7_USERNAME = process.env.CIN7_USERNAME;
 const CIN7_API_KEY = process.env.CIN7_API_KEY;
 
 app.use(cors());
 app.use(express.json());
 
-// Helper: build Basic Auth header
+// ─── Auth Header ────────────────────────────────────────────────────────────
 function authHeader() {
   const creds = Buffer.from(`${CIN7_USERNAME}:${CIN7_API_KEY}`).toString('base64');
   return `Basic ${creds}`;
 }
 
-// Helper: fetch all pages from Cin7
-async function fetchAllPages(endpoint) {
+// ─── Rate Limiter (max 3 req/seg a Cin7) ────────────────────────────────────
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function cin7Fetch(url) {
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': authHeader(),
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (res.status === 429) {
+    // Rate limited — esperar 1 segundo y reintentar una vez
+    await sleep(1000);
+    return cin7Fetch(url);
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cin7 API error ${res.status}: ${text}`);
+  }
+
+  return res.json();
+}
+
+// ─── Paginator genérico ──────────────────────────────────────────────────────
+async function fetchAllPages(endpoint, extraParams = '') {
   let page = 1;
-  const limit = 100;
+  const limit = 250; // máximo permitido por Cin7
   let allResults = [];
 
   while (true) {
-    const url = `https://api.cin7.com/api/v1/${endpoint}?rows=${limit}&page=${page}`;
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': authHeader(),
-        'Content-Type': 'application/json'
-      }
-    });
+    const url = `https://api.cin7.com/api/v1/${endpoint}?rows=${limit}&page=${page}${extraParams}`;
+    const data = await cin7Fetch(url);
+    await sleep(350); // ~3 req/seg
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Cin7 API error ${res.status}: ${text}`);
-    }
-
-    const data = await res.json();
-
-    // Cin7 returns different root keys depending on endpoint
-    const items = Array.isArray(data) ? data : 
-                  data.ProductList || data.Products || data.BranchList ||
-                  data.Branches || data.StockList || data.Stock || [];
+    const items = Array.isArray(data) ? data :
+      data.ProductList || data.Products ||
+      data.BranchList  || data.Branches ||
+      data.StockList   || data.Stock || [];
 
     if (!items || items.length === 0) break;
     allResults = allResults.concat(items);
@@ -54,58 +69,167 @@ async function fetchAllPages(endpoint) {
   return allResults;
 }
 
-// GET /api/products — fetch all products
+// ─── GET /api/products ───────────────────────────────────────────────────────
+// Todos los productos de Cin7 (sin stock)
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await fetchAllPages('products');
+    const { category } = req.query;
+    const params = category ? `&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL&where=Category%3D%22${encodeURIComponent(category)}%22` : '';
+    const products = await fetchAllPages('products', params);
     res.json({ success: true, count: products.length, products });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/stock — fetch stock levels
+// ─── GET /api/stock ──────────────────────────────────────────────────────────
+// Niveles de stock reales desde Cin7 (todos los productos)
+// Query params opcionales: ?category=BBW  &branch=Miami Warehouse
 app.get('/api/stock', async (req, res) => {
   try {
-    const stock = await fetchAllPages('products');
-    res.json({ success: true, count: stock.length, stock });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+    const { category, branch } = req.query;
 
-// GET /api/branches — fetch all branches/locations
-app.get('/api/branches', async (req, res) => {
-  try {
-    const url = `https://api.cin7.com/api/v1/ref/branch`;
-    const res2 = await fetch(url, {
-      headers: {
-        'Authorization': authHeader(),
-        'Content-Type': 'application/json'
-      }
+    // Construir filtro
+    let whereClause = '';
+    if (category) whereClause += `Category%3D%22${encodeURIComponent(category)}%22`;
+    const params = whereClause ? `&where=${whereClause}` : '';
+
+    // El endpoint correcto de Cin7 para stock levels
+    const stockData = await fetchAllPages('products/stocklevels', params);
+
+    // Si se pide filtrar por branch específico
+    let result = stockData;
+    if (branch) {
+      result = stockData.map(item => {
+        const filtered = { ...item };
+        if (item.ProductOptions) {
+          filtered.ProductOptions = item.ProductOptions.map(opt => ({
+            ...opt,
+            StockLevels: (opt.StockLevels || []).filter(sl =>
+              sl.Name?.toLowerCase().includes(branch.toLowerCase())
+            )
+          }));
+        }
+        return filtered;
+      });
+    }
+
+    // Normalizar a formato plano { sku, name, category, availableQty, branchStock[] }
+    const normalized = result.map(item => {
+      const options = item.ProductOptions || [];
+
+      // Sumar stock de todas las opciones y branches
+      let totalAvailable = 0;
+      const branchBreakdown = {};
+
+      options.forEach(opt => {
+        (opt.StockLevels || []).forEach(sl => {
+          const qty = sl.Available ?? sl.OnHand ?? 0;
+          totalAvailable += qty;
+          if (!branchBreakdown[sl.Name]) branchBreakdown[sl.Name] = 0;
+          branchBreakdown[sl.Name] += qty;
+        });
+      });
+
+      return {
+        id: item.ID,
+        sku: item.SKU,
+        name: item.Name,
+        category: item.Category,
+        availableQty: totalAvailable,
+        branchStock: Object.entries(branchBreakdown).map(([name, qty]) => ({ branch: name, qty })),
+        lastUpdated: new Date().toISOString()
+      };
     });
-    const data = await res2.json();
-    res.json({ success: true, branches: data.BranchList || data || [] });
+
+    res.json({ success: true, count: normalized.length, stock: normalized });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// GET /api/catalog — combined products + stock in one call
+// ─── GET /api/stock/:sku ─────────────────────────────────────────────────────
+// Stock de un producto específico por SKU (rápido, para mostrar en el catálogo)
+app.get('/api/stock/:sku', async (req, res) => {
+  try {
+    const { sku } = req.params;
+    const encodedSku = encodeURIComponent(`"${sku}"`);
+    const url = `https://api.cin7.com/api/v1/products/stocklevels?where=SKU%3D${encodedSku}`;
+    const data = await cin7Fetch(url);
+
+    const items = Array.isArray(data) ? data :
+      data.StockList || data.Stock || data.Products || [];
+
+    if (!items || items.length === 0) {
+      return res.json({ success: true, sku, availableQty: 0, branchStock: [] });
+    }
+
+    const item = items[0];
+    const options = item.ProductOptions || [];
+    let totalAvailable = 0;
+    const branchBreakdown = {};
+
+    options.forEach(opt => {
+      (opt.StockLevels || []).forEach(sl => {
+        const qty = sl.Available ?? sl.OnHand ?? 0;
+        totalAvailable += qty;
+        if (!branchBreakdown[sl.Name]) branchBreakdown[sl.Name] = 0;
+        branchBreakdown[sl.Name] += qty;
+      });
+    });
+
+    res.json({
+      success: true,
+      sku,
+      name: item.Name,
+      category: item.Category,
+      availableQty: totalAvailable,
+      branchStock: Object.entries(branchBreakdown).map(([name, qty]) => ({ branch: name, qty })),
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GET /api/catalog ────────────────────────────────────────────────────────
+// Productos + stock combinados. Usa ?category=BBW|Burlington|Walgreens
 app.get('/api/catalog', async (req, res) => {
   try {
-    const [products, stock] = await Promise.all([
-      fetchAllPages('products'),
-      fetchAllPages('products').catch(() => [])
+    const { category } = req.query;
+    const categoryFilter = category
+      ? `&where=Category%3D%22${encodeURIComponent(category)}%22`
+      : '';
+
+    // Llamadas en paralelo: productos y stock
+    const [products, stockData] = await Promise.all([
+      fetchAllPages('products', `${categoryFilter}&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL`),
+      fetchAllPages('products/stocklevels', categoryFilter)
     ]);
 
-    // Map stock by SKU
+    // Construir mapa de stock por SKU
     const stockMap = {};
-    stock.forEach(s => {
-      if (s.SKU) stockMap[s.SKU] = s.Available ?? s.OnHand ?? 0;
+    stockData.forEach(item => {
+      const options = item.ProductOptions || [];
+      let total = 0;
+      const branches = {};
+
+      options.forEach(opt => {
+        (opt.StockLevels || []).forEach(sl => {
+          const qty = sl.Available ?? sl.OnHand ?? 0;
+          total += qty;
+          if (!branches[sl.Name]) branches[sl.Name] = 0;
+          branches[sl.Name] += qty;
+        });
+      });
+
+      stockMap[item.SKU] = {
+        availableQty: total,
+        branchStock: Object.entries(branches).map(([name, qty]) => ({ branch: name, qty }))
+      };
     });
 
-    // Enrich products with stock
+    // Enriquecer productos con stock real
     const enriched = products.map(p => ({
       id: p.ID,
       sku: p.SKU,
@@ -117,10 +241,13 @@ app.get('/api/catalog', async (req, res) => {
       description: p.ShortDescription || p.Description || '',
       barcode: p.Barcode,
       unit: p.UOM,
-      stock: stockMap[p.SKU] ?? null,
       status: p.Status,
       tags: p.Tags || '',
       image: p.PictureURL || '',
+      // ✅ Stock real de Cin7
+      availableQty: stockMap[p.SKU]?.availableQty ?? null,
+      branchStock: stockMap[p.SKU]?.branchStock ?? [],
+      stockLastUpdated: new Date().toISOString()
     }));
 
     res.json({ success: true, count: enriched.length, products: enriched });
@@ -129,7 +256,17 @@ app.get('/api/catalog', async (req, res) => {
   }
 });
 
-// POST /api/shipping-rates — get ShipStation rates
+// ─── GET /api/branches ───────────────────────────────────────────────────────
+app.get('/api/branches', async (req, res) => {
+  try {
+    const data = await cin7Fetch('https://api.cin7.com/api/v1/ref/branch');
+    res.json({ success: true, branches: data.BranchList || data || [] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST /api/shipping-rates ────────────────────────────────────────────────
 app.post('/api/shipping-rates', async (req, res) => {
   try {
     const { toPostalCode, toCountry, weightLbs } = req.body;
@@ -139,14 +276,12 @@ app.post('/api/shipping-rates', async (req, res) => {
     const SS_SECRET = process.env.SS_SECRET;
     const ssAuth = Buffer.from(`${SS_KEY}:${SS_SECRET}`).toString('base64');
 
-    // Get available carriers first
     const carriersRes = await fetch('https://ssapi.shipstation.com/carriers', {
       headers: { 'Authorization': `Basic ${ssAuth}`, 'Content-Type': 'application/json' }
     });
     const carriersData = await carriersRes.json();
     const carriers = Array.isArray(carriersData) ? carriersData : [];
 
-    // Fetch rates for each carrier in parallel
     const weight = weightLbs || 1;
     const rateRequests = carriers.map(carrier =>
       fetch('https://ssapi.shipstation.com/shipments/getrates', {
@@ -156,7 +291,7 @@ app.post('/api/shipping-rates', async (req, res) => {
           carrierCode: carrier.code,
           fromPostalCode: '33325',
           toCountry: toCountry || 'US',
-          toPostalCode: toPostalCode,
+          toPostalCode,
           weight: { value: weight, units: 'pounds' },
           dimensions: { units: 'inches', length: 12, width: 10, height: 8 }
         })
@@ -165,11 +300,8 @@ app.post('/api/shipping-rates', async (req, res) => {
 
     const allRates = await Promise.all(rateRequests);
     const flatRates = allRates.flat().filter(r => r && r.shipmentCost !== undefined);
-
-    // Sort by total cost
     flatRates.sort((a, b) => (a.shipmentCost + a.otherCost) - (b.shipmentCost + b.otherCost));
 
-    // Return top 5 cheapest options
     const top5 = flatRates.slice(0, 5).map(r => ({
       carrier: r.carrierCode,
       service: r.serviceName,
@@ -183,7 +315,7 @@ app.post('/api/shipping-rates', async (req, res) => {
   }
 });
 
-// POST /api/send-order-email — send order confirmation email via Resend
+// ─── POST /api/send-order-email ──────────────────────────────────────────────
 app.post('/api/send-order-email', async (req, res) => {
   try {
     const { order, userEmail } = req.body;
@@ -193,7 +325,6 @@ app.post('/api/send-order-email', async (req, res) => {
     const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
     const adminEmail = process.env.ADMIN_EMAIL || 'l.gonzalez@allamericanlightingsolutions.com';
 
-    // Build items table
     const itemsRows = (order.items || []).map(item => `
       <tr>
         <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;color:#333">${item.store || ''}${item.store_num ? ' #' + item.store_num : ''}<br><span style="font-size:11px;color:#888">${item.store_address ? item.store_address + ', ' + item.store_city + ' ' + item.store_zip : ''}</span></td>
@@ -209,26 +340,20 @@ app.post('/api/send-order-email', async (req, res) => {
 <head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif">
   <div style="max-width:620px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-    <!-- Header -->
     <div style="background:#0B1F3A;padding:24px 32px;display:flex;align-items:center">
       <div>
         <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:0.05em">AALS<span style="color:#CC0000"> ///</span></div>
         <div style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:2px">All American Lighting Solutions</div>
       </div>
     </div>
-    <!-- Body -->
     <div style="padding:32px">
       <h1 style="font-size:20px;color:#0B1F3A;margin:0 0 8px">Order Confirmation</h1>
       <p style="color:#666;font-size:14px;margin:0 0 24px">Your order has been received and is being processed.</p>
-
-      <!-- Order Info -->
       <div style="background:#f8f9fa;border-radius:8px;padding:16px 20px;margin-bottom:24px;display:flex;gap:32px;flex-wrap:wrap">
         <div><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em">Order Number</div><div style="font-size:15px;font-weight:700;color:#0B1F3A;margin-top:3px">${order.order_number}</div></div>
         <div><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em">Date</div><div style="font-size:15px;font-weight:700;color:#0B1F3A;margin-top:3px">${new Date(order.created_at).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'})}</div></div>
         <div><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.08em">Status</div><div style="font-size:15px;font-weight:700;color:#CC0000;margin-top:3px">Pending</div></div>
       </div>
-
-      <!-- Items Table -->
       <h2 style="font-size:14px;font-weight:700;color:#0B1F3A;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 12px">Order Items</h2>
       <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
         <thead>
@@ -242,23 +367,17 @@ app.post('/api/send-order-email', async (req, res) => {
         </thead>
         <tbody>${itemsRows}</tbody>
       </table>
-
-      <!-- Totals -->
       <div style="border-top:2px solid #eee;padding-top:16px;margin-bottom:24px">
         <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;color:#555"><span>Subtotal</span><span>$${order.subtotal || '0.00'}</span></div>
         <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;color:#555"><span>Tax (7%)</span><span>$${order.tax || '0.00'}</span></div>
         <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px;color:#555"><span>Shipping${order.shipping_service ? ' (' + order.shipping_service + ')' : ''}</span><span>${order.shipping ? '$' + order.shipping : '—'}</span></div>
         <div style="display:flex;justify-content:space-between;padding:10px 0 5px;font-size:16px;font-weight:800;color:#0B1F3A;border-top:1px solid #eee;margin-top:6px"><span>Estimated Total</span><span>$${order.estimated_total || '0.00'}</span></div>
       </div>
-
       ${order.notes ? `<div style="background:#FFF8E1;border-radius:8px;padding:14px 16px;margin-bottom:24px;font-size:13px;color:#555"><strong>📝 Notes:</strong> ${order.notes}</div>` : ''}
-
-      <!-- Footer Note -->
       <div style="background:#FDECEA;border-radius:8px;padding:14px 16px;font-size:13px;color:#555;margin-bottom:24px">
         <strong>📋 Note:</strong> This is an estimated total for reference only. Your final invoice will be sent through Cin7 at the end of the month.
       </div>
     </div>
-    <!-- Footer -->
     <div style="background:#f8f9fa;padding:20px 32px;text-align:center;border-top:1px solid #eee">
       <p style="font-size:12px;color:#888;margin:0">All American Lighting Solutions · <a href="https://aals-catalog.netlify.app" style="color:#CC0000;text-decoration:none">aals-catalog.netlify.app</a></p>
     </div>
@@ -266,7 +385,6 @@ app.post('/api/send-order-email', async (req, res) => {
 </body>
 </html>`;
 
-    // Send to customer
     const resCustomer = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
@@ -278,7 +396,6 @@ app.post('/api/send-order-email', async (req, res) => {
       })
     });
 
-    // Send copy to admin
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
@@ -301,7 +418,7 @@ app.post('/api/send-order-email', async (req, res) => {
   }
 });
 
-// Health check
+// ─── Health check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.json({ status: 'AALS Cin7 Proxy running ✅', timestamp: new Date().toISOString() });
 });
