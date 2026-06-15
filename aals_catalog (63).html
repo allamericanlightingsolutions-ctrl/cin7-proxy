@@ -1444,5 +1444,51 @@ function switchCatalog() {
     <div class="quotes-scroll" id="quotesScroll"></div>
   </div>
 </div>
-</body>
+</body><script>
+const PROXY_URL = 'https://cin7-proxy-rtg8.onrender.com';
+async function loadCin7Products(cin7Category) {
+  const encoded = encodeURIComponent(cin7Category);
+  const res = await fetch(`${PROXY_URL}/api/products?category=${encoded}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.products.map(p => ({
+    part: p.SKU || '', description: p.Name || '', location: p.Category || '',
+    price: p.PriceTier1 || 0, qty: 1, brand: p.Brand || '', image: p.PictureURL || '',
+  }));
+}
+const _origLoadCatalog = loadCatalog;
+window.loadCatalog = async function(slug) {
+  const cat = CATALOGS[slug];
+  if (!cat) return _origLoadCatalog(slug);
+  const CIN7_CATEGORY_MAP = {
+    'bbw': 'Bath & Body Works', 'burlington': 'Burlington', 'walgreens': 'Walgreens',
+  };
+  const cin7Cat = CIN7_CATEGORY_MAP[slug];
+  if (cin7Cat) {
+    document.getElementById('catalogScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.querySelector('.layout').style.display = 'none';
+    document.getElementById('simpleCatalogView').style.display = 'flex';
+    document.getElementById('simpleCatTitle').textContent = cat.icon + ' ' + cat.name + ' Catalog';
+    document.getElementById('simpleCatDesc').textContent = 'Loading from Cin7...';
+    document.getElementById('simpleProdBody').innerHTML =
+      '<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--mid)">⏳ Loading products from Cin7...</td></tr>';
+    try {
+      const products = await loadCin7Products(cin7Cat);
+      cat.products = products;
+      currentCatalog = slug;
+      cart = []; addedItems = new Set(); updateCartCount();
+      const badge = document.getElementById('navCatalogBadge');
+      if (badge) { badge.textContent = cat.name; badge.style.display = 'inline'; }
+      document.getElementById('simpleCatDesc').textContent = products.length + ' products loaded from Cin7';
+      renderSimpleProducts();
+    } catch (err) {
+      document.getElementById('simpleProdBody').innerHTML =
+        '<tr><td colspan="6" style="padding:32px;text-align:center;color:red">❌ Error: ' + err.message + '</td></tr>';
+    }
+  } else {
+    _origLoadCatalog(slug);
+  }
+};
+</script>
 </html>
