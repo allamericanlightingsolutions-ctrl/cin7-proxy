@@ -1452,9 +1452,13 @@ async function loadCin7Products(cin7Category) {
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.products.map(p => ({
-    part: p.SKU || '', description: p.Name || '', location: p.Category || '',
-    price: p.PriceTier1 || 0, qty: 1, brand: p.Brand || '', image: p.PictureURL || '',
-  }));
+ part: p.SKU || p.code || p.Code || '',
+description: p.Name || p.name || '',
+location: p.Category || p.category || '',
+price: p.PriceTier1 || p.retailPrice || p.price || 0,
+qty: 1,
+brand: p.Brand || p.brand || '',
+image: p.PictureURL || p.pictureURL || '',
 }
 const _origLoadCatalog = loadCatalog;
 window.loadCatalog = async function(slug) {
