@@ -31,7 +31,6 @@ async function cin7Fetch(url) {
   });
 
   if (res.status === 429) {
-    // Rate limited — esperar 1 segundo y reintentar una vez
     await sleep(1000);
     return cin7Fetch(url);
   }
@@ -47,13 +46,13 @@ async function cin7Fetch(url) {
 // ─── Paginator genérico ──────────────────────────────────────────────────────
 async function fetchAllPages(endpoint, extraParams = '') {
   let page = 1;
-  const limit = 250; // máximo permitido por Cin7
+  const limit = 250;
   let allResults = [];
 
   while (true) {
     const url = `https://api.cin7.com/api/v1/${endpoint}?rows=${limit}&page=${page}${extraParams}`;
     const data = await cin7Fetch(url);
-    await sleep(350); // ~3 req/seg
+    await sleep(350);
 
     const items = Array.isArray(data) ? data :
       data.ProductList || data.Products ||
@@ -69,12 +68,27 @@ async function fetchAllPages(endpoint, extraParams = '') {
   return allResults;
 }
 
+// ─── GET /api/categories ─────────────────────────────────────────────────────
+// Lista todas las categorías únicas en Cin7 (útil para diagnóstico)
+app.get('/api/categories', async (req, res) => {
+  try {
+    const products = await fetchAllPages('products', '&fields=ID,SKU,Category');
+    const cats = [...new Set(products.map(p => p.Category).filter(Boolean))].sort();
+    res.json({ count: cats.length, categories: cats });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── GET /api/products ───────────────────────────────────────────────────────
 // Todos los productos de Cin7 (sin stock)
 app.get('/api/products', async (req, res) => {
   try {
     const { category } = req.query;
-    const params = category ? `&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL&where=Category%3D%22${encodeURIComponent(category)}%22` : '';
+    // ✅ FIX: comillas simples en lugar de dobles para el filtro where
+    const params = category
+      ? `&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL&where=Category%3D'${encodeURIComponent(category)}'`
+      : '';
     const products = await fetchAllPages('products', params);
     res.json({ success: true, count: products.length, products });
   } catch (err) {
@@ -83,21 +97,17 @@ app.get('/api/products', async (req, res) => {
 });
 
 // ─── GET /api/stock ──────────────────────────────────────────────────────────
-// Niveles de stock reales desde Cin7 (todos los productos)
-// Query params opcionales: ?category=BBW  &branch=Miami Warehouse
+// Niveles de stock reales desde Cin7
 app.get('/api/stock', async (req, res) => {
   try {
     const { category, branch } = req.query;
 
-    // Construir filtro
-    let whereClause = '';
-    if (category) whereClause += `Category%3D%22${encodeURIComponent(category)}%22`;
-    const params = whereClause ? `&where=${whereClause}` : '';
+    // ✅ FIX: comillas simples en el filtro where
+    let params = '';
+    if (category) params = `&where=Category%3D'${encodeURIComponent(category)}'`;
 
-    // El endpoint correcto de Cin7 para stock levels
     const stockData = await fetchAllPages('products/stocklevels', params);
 
-    // Si se pide filtrar por branch específico
     let result = stockData;
     if (branch) {
       result = stockData.map(item => {
@@ -114,11 +124,8 @@ app.get('/api/stock', async (req, res) => {
       });
     }
 
-    // Normalizar a formato plano { sku, name, category, availableQty, branchStock[] }
     const normalized = result.map(item => {
       const options = item.ProductOptions || [];
-
-      // Sumar stock de todas las opciones y branches
       let totalAvailable = 0;
       const branchBreakdown = {};
 
@@ -149,11 +156,12 @@ app.get('/api/stock', async (req, res) => {
 });
 
 // ─── GET /api/stock/:sku ─────────────────────────────────────────────────────
-// Stock de un producto específico por SKU (rápido, para mostrar en el catálogo)
+// Stock de un producto específico por SKU
 app.get('/api/stock/:sku', async (req, res) => {
   try {
     const { sku } = req.params;
-    const encodedSku = encodeURIComponent(`"${sku}"`);
+    // ✅ FIX: comillas simples para el filtro SKU
+    const encodedSku = encodeURIComponent(`'${sku}'`);
     const url = `https://api.cin7.com/api/v1/products/stocklevels?where=SKU%3D${encodedSku}`;
     const data = await cin7Fetch(url);
 
@@ -197,17 +205,16 @@ app.get('/api/stock/:sku', async (req, res) => {
 app.get('/api/catalog', async (req, res) => {
   try {
     const { category } = req.query;
+    // ✅ FIX: comillas simples en el filtro where
     const categoryFilter = category
-      ? `&where=Category%3D%22${encodeURIComponent(category)}%22`
+      ? `&where=Category%3D'${encodeURIComponent(category)}'`
       : '';
 
-    // Llamadas en paralelo: productos y stock
     const [products, stockData] = await Promise.all([
       fetchAllPages('products', `${categoryFilter}&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL`),
       fetchAllPages('products/stocklevels', categoryFilter)
     ]);
 
-    // Construir mapa de stock por SKU
     const stockMap = {};
     stockData.forEach(item => {
       const options = item.ProductOptions || [];
@@ -229,7 +236,6 @@ app.get('/api/catalog', async (req, res) => {
       };
     });
 
-    // Enriquecer productos con stock real
     const enriched = products.map(p => ({
       id: p.ID,
       sku: p.SKU,
@@ -244,7 +250,6 @@ app.get('/api/catalog', async (req, res) => {
       status: p.Status,
       tags: p.Tags || '',
       image: p.PictureURL || '',
-      // ✅ Stock real de Cin7
       availableQty: stockMap[p.SKU]?.availableQty ?? null,
       branchStock: stockMap[p.SKU]?.branchStock ?? [],
       stockLastUpdated: new Date().toISOString()
