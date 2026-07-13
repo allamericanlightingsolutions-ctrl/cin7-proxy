@@ -111,64 +111,99 @@ function pickFirst(obj, keys) {
   return '';
 }
 
+function stripHtml(value) {
+  return String(value || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeImageList(p) {
+  const result = [];
+  const direct = pickFirst(p, [
+    'PictureURL','PictureUrl','ImageURL','ImageUrl','Image','Photo','PhotoURL','ProductImage','ThumbnailURL'
+  ]);
+  if (direct) result.push(String(direct));
+
+  for (const key of ['images','Images','productImages','ProductImages']) {
+    const arr = Array.isArray(p[key]) ? p[key] : [];
+    arr.forEach(img => {
+      if (typeof img === 'string') result.push(img);
+      else {
+        const link = img.link || img.url || img.URL || img.ImageURL || img.PictureURL;
+        if (link) result.push(String(link));
+      }
+    });
+  }
+  return [...new Set(result.filter(Boolean))];
+}
+
 function normalizeCin7Product(p) {
-  const description = pickFirst(p, [
-    'ShortDescription',
-    'Description',
-    'LongDescription',
-    'ProductDescription',
-    'WebDescription',
-    'Notes'
+  const descriptionHtml = pickFirst(p, [
+    'description','Description','ShortDescription','LongDescription','ProductDescription','WebDescription','Notes'
   ]);
 
-  const image = pickFirst(p, [
-    'PictureURL',
-    'PictureUrl',
-    'ImageURL',
-    'ImageUrl',
-    'Image',
-    'Photo',
-    'PhotoURL',
-    'ProductImage',
-    'ThumbnailURL'
+  const pdfDescriptionHtml = pickFirst(p, [
+    'pdfDescription','PdfDescription','specification','Specification','Specifications','specifications'
   ]);
+
+  const images = normalizeImageList(p);
+  const image = images[0] || '';
 
   const specs = {
-    brand: pickFirst(p, ['Brand']),
-    category: pickFirst(p, ['Category']),
-    barcode: pickFirst(p, ['Barcode', 'BarcodeNumber']),
-    uom: pickFirst(p, ['UOM', 'UnitOfMeasure']),
-    status: pickFirst(p, ['Status']),
-    tags: pickFirst(p, ['Tags']),
-    size: pickFirst(p, ['Size']),
-    color: pickFirst(p, ['Color']),
-    option1: pickFirst(p, ['Option1']),
-    option2: pickFirst(p, ['Option2']),
-    option3: pickFirst(p, ['Option3']),
-    weight: pickFirst(p, ['Weight', 'UnitWeight']),
-    length: pickFirst(p, ['Length']),
-    width: pickFirst(p, ['Width']),
-    height: pickFirst(p, ['Height']),
-    custom1: pickFirst(p, ['CustomField1', 'Custom1']),
-    custom2: pickFirst(p, ['CustomField2', 'Custom2']),
-    custom3: pickFirst(p, ['CustomField3', 'Custom3'])
+    brand: pickFirst(p, ['brand','Brand']),
+    category: pickFirst(p, ['category','Category']),
+    subCategory: pickFirst(p, ['subCategory','SubCategory']),
+    barcode: pickFirst(p, ['barcode','Barcode','BarcodeNumber']),
+    uom: pickFirst(p, ['uom','UOM','UnitOfMeasure']),
+    status: pickFirst(p, ['status','Status']),
+    tags: pickFirst(p, ['tags','Tags']),
+    supplierCode: pickFirst(p, ['supplierCode','SupplierCode']),
+    styleCode: pickFirst(p, ['styleCode','StyleCode']),
+    productType: pickFirst(p, ['productType','ProductType']),
+    productSubtype: pickFirst(p, ['productSubtype','ProductSubtype']),
+    size: pickFirst(p, ['size','Size']),
+    weight: pickFirst(p, ['weight','Weight','UnitWeight']),
+    length: pickFirst(p, ['length','Length']),
+    width: pickFirst(p, ['width','Width']),
+    height: pickFirst(p, ['height','Height']),
+    volume: pickFirst(p, ['volume','Volume']),
+    option1: pickFirst(p, ['option1','Option1']),
+    option2: pickFirst(p, ['option2','Option2']),
+    option3: pickFirst(p, ['option3','Option3']),
+    optionLabel1: pickFirst(p, ['optionLabel1','OptionLabel1']),
+    optionLabel2: pickFirst(p, ['optionLabel2','OptionLabel2']),
+    optionLabel3: pickFirst(p, ['optionLabel3','OptionLabel3']),
+    pdfUpload: pickFirst(p, ['pdfUpload','PdfUpload','specSheet','SpecSheet']),
+    customFields: p.customFields || p.CustomFields || {}
   };
 
   return {
-    id: pickFirst(p, ['ID', 'Id', 'ProductID']),
-    sku: pickFirst(p, ['SKU', 'Sku', 'Code', 'ProductCode']),
-    code: pickFirst(p, ['SKU', 'Sku', 'Code', 'ProductCode']),
-    name: pickFirst(p, ['Name', 'ProductName']),
+    id: pickFirst(p, ['id','ID','Id','productID','ProductID']),
+    sku: pickFirst(p, ['code','SKU','Sku','Code','ProductCode']),
+    code: pickFirst(p, ['code','SKU','Sku','Code','ProductCode']),
+    name: pickFirst(p, ['name','Name','ProductName']),
     category: specs.category,
     brand: specs.brand,
-    price: pickFirst(p, ['PriceTier1', 'Price', 'RetailPrice']) || 0,
-    costPrice: pickFirst(p, ['UnitCost', 'CostPrice', 'Cost']) || 0,
-    description,
+    price: pickFirst(p, ['retailPrice','PriceTier1','Price','RetailPrice']) || 0,
+    wholesalePrice: pickFirst(p, ['wholesalePrice','WholesalePrice']) || 0,
+    costPrice: pickFirst(p, ['unitCost','UnitCost','CostPrice','Cost']) || 0,
+    description: stripHtml(descriptionHtml),
+    descriptionHtml,
+    pdfDescription: stripHtml(pdfDescriptionHtml),
+    pdfDescriptionHtml,
     barcode: specs.barcode,
     unit: specs.uom,
     status: specs.status,
     tags: specs.tags,
     image,
+    images,
     specs,
     raw: p
   };
@@ -334,6 +369,20 @@ app.get('/api/product-sample', async (req, res) => {
       fields: items[0] ? Object.keys(items[0]) : [],
       sample: items.slice(0, 5)
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/product-details/:code', async (req, res) => {
+  try {
+    const code = String(req.params.code || '').replace(/'/g, "''");
+    const data = await cin7Fetch(`${CIN7_BASE_URL}/products?rows=10&page=1&where=code%3D'${encodeURIComponent(code)}'`);
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || [];
+    const normalized = items.map(normalizeCin7Product);
+    res.json({ success: true, count: normalized.length, products: normalized });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
