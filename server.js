@@ -165,9 +165,14 @@ function buildCin7SalesOrder(order, adminUser) {
 
     company: process.env.CIN7_CUSTOMER_COMPANY || 'Bath & Body Works',
 
+    // Cin7 requires these contact fields when MemberId is zero / no existing contact is matched.
+    firstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    lastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
+    phone: process.env.CIN7_PHONE || '',
+
     deliveryCompany: storeNum ? `Bath & Body Works Store #${storeNum}` : 'Bath & Body Works',
-    deliveryFirstName: 'BBW',
-    deliveryLastName: storeNum ? `Store ${storeNum}` : 'Store',
+    deliveryFirstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    deliveryLastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
     deliveryAddress1: cleanText(first.store_address || ''),
     deliveryCity: cleanText(first.store_city || ''),
     deliveryState: cleanText(first.store_state || ''),
@@ -175,6 +180,9 @@ function buildCin7SalesOrder(order, adminUser) {
     deliveryCountry: cleanText(first.store_country || 'US'),
 
     billingCompany: process.env.CIN7_CUSTOMER_COMPANY || 'Bath & Body Works',
+    billingFirstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    billingLastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
+    billingEmail: cin7Email,
     billingCountry: 'US',
 
     internalComments: cleanText(
