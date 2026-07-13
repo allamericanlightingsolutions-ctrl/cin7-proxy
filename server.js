@@ -127,6 +127,9 @@ function buildCin7SalesOrder(order, adminUser) {
   const todayIso = new Date().toISOString();
   const memberEmail = cleanText(process.env.CIN7_MEMBER_EMAIL || '');
   const customerEmail = cleanText(process.env.CIN7_CUSTOMER_EMAIL || '');
+  const fallbackEmail = cleanText(process.env.CIN7_FALLBACK_EMAIL || process.env.ADMIN_EMAIL || 'orders@aalsusa.com');
+  const orderEmail = cleanText(order.user_email || adminUser.email || '');
+  const cin7Email = isValidEmail(customerEmail) ? customerEmail : (isValidEmail(orderEmail) ? orderEmail : fallbackEmail);
 
   const lineItems = (order.items || []).map((item, index) => {
     const code = cleanText(item.cin7_code || item.part || item.vendor_part || '', 100);
@@ -183,10 +186,10 @@ function buildCin7SalesOrder(order, adminUser) {
     createdDate: todayIso
   };
 
-  // Cin7 rejects MemberEmail when empty or not a valid e-mail.
-  // Only include these fields when Render has valid e-mail variables configured.
+  // Cin7 requires Email when MemberId is 0.
+  // MemberEmail is optional and only sent when explicitly configured as a valid e-mail.
+  salesOrder.email = cin7Email;
   if (isValidEmail(memberEmail)) salesOrder.memberEmail = memberEmail;
-  if (isValidEmail(customerEmail)) salesOrder.email = customerEmail;
 
   return salesOrder;
 }
