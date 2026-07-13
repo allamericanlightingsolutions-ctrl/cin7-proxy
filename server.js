@@ -144,6 +144,38 @@ function normalizeImageList(p) {
   return [...new Set(result.filter(Boolean))];
 }
 
+
+function normalizeProductOptions(p) {
+  const options = Array.isArray(p.productOptions) ? p.productOptions
+    : Array.isArray(p.ProductOptions) ? p.ProductOptions
+    : [];
+
+  return options.map(opt => ({
+    id: pickFirst(opt, ['id','ID','Id','productOptionId','ProductOptionId']),
+    code: pickFirst(opt, ['code','Code','productOptionCode','ProductOptionCode','sku','SKU']),
+    barcode: pickFirst(opt, ['barcode','Barcode','productOptionBarcode','ProductOptionBarcode']),
+    supplierCode: pickFirst(opt, ['supplierCode','SupplierCode']),
+    option1: pickFirst(opt, ['option1','Option1']),
+    option2: pickFirst(opt, ['option2','Option2']),
+    option3: pickFirst(opt, ['option3','Option3']),
+    size: pickFirst(opt, ['size','Size']),
+    weight: pickFirst(opt, ['weight','Weight']),
+    retailPrice: pickFirst(opt, ['retailPrice','RetailPrice']),
+    wholesalePrice: pickFirst(opt, ['wholesalePrice','WholesalePrice']),
+    vipPrice: pickFirst(opt, ['vipPrice','VipPrice']),
+    specialPrice: pickFirst(opt, ['specialPrice','SpecialPrice']),
+    stockAvailable: pickFirst(opt, ['stockAvailable','StockAvailable']),
+    stockOnHand: pickFirst(opt, ['stockOnHand','StockOnHand'])
+  })).filter(opt => opt.code || opt.barcode || opt.supplierCode);
+}
+
+function getPrimaryProductCode(p, options) {
+  return pickFirst(p, ['code','SKU','Sku','Code','ProductCode'])
+    || pickFirst(options[0] || {}, ['code','barcode','supplierCode'])
+    || pickFirst(p, ['styleCode','StyleCode']);
+}
+
+
 function normalizeCin7Product(p) {
   const descriptionHtml = pickFirst(p, [
     'description','Description','ShortDescription','LongDescription','ProductDescription','WebDescription','Notes'
@@ -155,6 +187,8 @@ function normalizeCin7Product(p) {
 
   const images = normalizeImageList(p);
   const image = images[0] || '';
+  const productOptions = normalizeProductOptions(p);
+  const primaryCode = getPrimaryProductCode(p, productOptions);
 
   const specs = {
     brand: pickFirst(p, ['brand','Brand']),
@@ -186,8 +220,8 @@ function normalizeCin7Product(p) {
 
   return {
     id: pickFirst(p, ['id','ID','Id','productID','ProductID']),
-    sku: pickFirst(p, ['code','SKU','Sku','Code','ProductCode']),
-    code: pickFirst(p, ['code','SKU','Sku','Code','ProductCode']),
+    sku: primaryCode,
+    code: primaryCode,
     name: pickFirst(p, ['name','Name','ProductName']),
     category: specs.category,
     brand: specs.brand,
@@ -205,6 +239,8 @@ function normalizeCin7Product(p) {
     image,
     images,
     specs,
+    productOptions,
+    optionCodes: productOptions.map(opt => opt.code).filter(Boolean),
     raw: p
   };
 }
@@ -383,6 +419,56 @@ app.get('/api/product-details/:code', async (req, res) => {
       : data.ProductList || data.Products || [];
     const normalized = items.map(normalizeCin7Product);
     res.json({ success: true, count: normalized.length, products: normalized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/catalog-code-index', async (req, res) => {
+  try {
+    const { includeRaw = '0' } = req.query;
+    const products = await fetchAllPagesSafe('products', '');
+    const normalized = products.map(normalizeCin7Product);
+
+    const index = {};
+    normalized.forEach(p => {
+      const keys = [
+        p.code,
+        p.sku,
+        ...(p.optionCodes || []),
+        p.specs?.supplierCode,
+        p.specs?.styleCode,
+        p.barcode
+      ].filter(Boolean);
+
+      [...new Set(keys.map(k => String(k).trim()).filter(Boolean))].forEach(key => {
+        index[key.toUpperCase()] = {
+          id: p.id,
+          code: p.code,
+          sku: p.sku,
+          name: p.name,
+          image: p.image,
+          images: p.images,
+          description: p.description,
+          descriptionHtml: p.descriptionHtml,
+          pdfDescription: p.pdfDescription,
+          pdfDescriptionHtml: p.pdfDescriptionHtml,
+          brand: p.brand,
+          category: p.category,
+          specs: p.specs,
+          optionCodes: p.optionCodes,
+          productOptions: p.productOptions,
+          raw: includeRaw === '1' ? p.raw : undefined
+        };
+      });
+    });
+
+    res.json({
+      success: true,
+      count: Object.keys(index).length,
+      productCount: normalized.length,
+      index
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
