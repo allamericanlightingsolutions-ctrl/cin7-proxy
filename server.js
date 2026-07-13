@@ -114,6 +114,10 @@ function getFirstItem(order) {
   return Array.isArray(order.items) && order.items.length ? order.items[0] : {};
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
 function buildCin7SalesOrder(order, adminUser) {
   const first = getFirstItem(order);
   const orderNumber = cleanText(order.order_number || order.quote_number || `AALS-${Date.now()}`, 30);
@@ -121,6 +125,8 @@ function buildCin7SalesOrder(order, adminUser) {
   const storeName = cleanText(first.store || `Bath & Body Works${storeNum ? ' Store #' + storeNum : ''}`);
   const requestedBy = cleanText(order.user_email || adminUser.email || '');
   const todayIso = new Date().toISOString();
+  const memberEmail = cleanText(process.env.CIN7_MEMBER_EMAIL || '');
+  const customerEmail = cleanText(process.env.CIN7_CUSTOMER_EMAIL || '');
 
   const lineItems = (order.items || []).map((item, index) => {
     const code = cleanText(item.cin7_code || item.part || item.vendor_part || '', 100);
@@ -148,15 +154,13 @@ function buildCin7SalesOrder(order, adminUser) {
     throw new Error('Order has no valid line items to send to Cin7.');
   }
 
-  return {
+  const salesOrder = {
     reference: orderNumber,
     customerOrderNo: orderNumber,
     stage: process.env.CIN7_DRAFT_STAGE || 'New',
     isApproved: false,
 
     company: process.env.CIN7_CUSTOMER_COMPANY || 'Bath & Body Works',
-    memberEmail: process.env.CIN7_MEMBER_EMAIL || '',
-    email: requestedBy,
 
     deliveryCompany: storeNum ? `Bath & Body Works Store #${storeNum}` : 'Bath & Body Works',
     deliveryFirstName: 'BBW',
@@ -178,6 +182,13 @@ function buildCin7SalesOrder(order, adminUser) {
     lineItems,
     createdDate: todayIso
   };
+
+  // Cin7 rejects MemberEmail when empty or not a valid e-mail.
+  // Only include these fields when Render has valid e-mail variables configured.
+  if (isValidEmail(memberEmail)) salesOrder.memberEmail = memberEmail;
+  if (isValidEmail(customerEmail)) salesOrder.email = customerEmail;
+
+  return salesOrder;
 }
 
 // ─── Existing product/catalog endpoints ──────────────────────────────────────
