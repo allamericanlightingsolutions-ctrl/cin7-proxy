@@ -78,6 +78,102 @@ async function fetchAllPages(endpoint, extraParams = '') {
   return allResults;
 }
 
+async function fetchAllPagesSafe(endpoint, extraParams = '') {
+  let page = 1;
+  const limit = 250;
+  let allResults = [];
+
+  while (true) {
+    const joiner = extraParams ? '&' : '';
+    const url = `${CIN7_BASE_URL}/${endpoint}?rows=${limit}&page=${page}${joiner}${extraParams}`;
+    const data = await cin7Fetch(url);
+    await sleep(350);
+
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || data.BranchList || data.Branches || data.StockList || data.Stock || [];
+
+    if (!items || items.length === 0) break;
+    allResults = allResults.concat(items);
+    if (items.length < limit) break;
+    page++;
+  }
+
+  return allResults;
+}
+
+function pickFirst(obj, keys) {
+  for (const key of keys) {
+    if (obj && obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== '') {
+      return obj[key];
+    }
+  }
+  return '';
+}
+
+function normalizeCin7Product(p) {
+  const description = pickFirst(p, [
+    'ShortDescription',
+    'Description',
+    'LongDescription',
+    'ProductDescription',
+    'WebDescription',
+    'Notes'
+  ]);
+
+  const image = pickFirst(p, [
+    'PictureURL',
+    'PictureUrl',
+    'ImageURL',
+    'ImageUrl',
+    'Image',
+    'Photo',
+    'PhotoURL',
+    'ProductImage',
+    'ThumbnailURL'
+  ]);
+
+  const specs = {
+    brand: pickFirst(p, ['Brand']),
+    category: pickFirst(p, ['Category']),
+    barcode: pickFirst(p, ['Barcode', 'BarcodeNumber']),
+    uom: pickFirst(p, ['UOM', 'UnitOfMeasure']),
+    status: pickFirst(p, ['Status']),
+    tags: pickFirst(p, ['Tags']),
+    size: pickFirst(p, ['Size']),
+    color: pickFirst(p, ['Color']),
+    option1: pickFirst(p, ['Option1']),
+    option2: pickFirst(p, ['Option2']),
+    option3: pickFirst(p, ['Option3']),
+    weight: pickFirst(p, ['Weight', 'UnitWeight']),
+    length: pickFirst(p, ['Length']),
+    width: pickFirst(p, ['Width']),
+    height: pickFirst(p, ['Height']),
+    custom1: pickFirst(p, ['CustomField1', 'Custom1']),
+    custom2: pickFirst(p, ['CustomField2', 'Custom2']),
+    custom3: pickFirst(p, ['CustomField3', 'Custom3'])
+  };
+
+  return {
+    id: pickFirst(p, ['ID', 'Id', 'ProductID']),
+    sku: pickFirst(p, ['SKU', 'Sku', 'Code', 'ProductCode']),
+    code: pickFirst(p, ['SKU', 'Sku', 'Code', 'ProductCode']),
+    name: pickFirst(p, ['Name', 'ProductName']),
+    category: specs.category,
+    brand: specs.brand,
+    price: pickFirst(p, ['PriceTier1', 'Price', 'RetailPrice']) || 0,
+    costPrice: pickFirst(p, ['UnitCost', 'CostPrice', 'Cost']) || 0,
+    description,
+    barcode: specs.barcode,
+    unit: specs.uom,
+    status: specs.status,
+    tags: specs.tags,
+    image,
+    specs,
+    raw: p
+  };
+}
+
 async function verifyAdmin(req) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('Proxy missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.');
@@ -216,12 +312,28 @@ app.get('/api/categories', async (req, res) => {
 
 app.get('/api/products', async (req, res) => {
   try {
-    const { category } = req.query;
-    const params = category
-      ? `&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL&where=Category%3D'${encodeURIComponent(category)}'`
-      : '';
-    const products = await fetchAllPages('products', params);
-    res.json({ success: true, count: products.length, products });
+    const { category, raw } = req.query;
+    const params = category ? `where=Category%3D'${encodeURIComponent(category)}'` : '';
+    const products = await fetchAllPagesSafe('products', params);
+    const normalized = raw === '1' ? products : products.map(normalizeCin7Product);
+    res.json({ success: true, count: normalized.length, products: normalized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/product-sample', async (req, res) => {
+  try {
+    const data = await cin7Fetch(`${CIN7_BASE_URL}/products?rows=5&page=1`);
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || [];
+    res.json({
+      success: true,
+      count: items.length,
+      fields: items[0] ? Object.keys(items[0]) : [],
+      sample: items.slice(0, 5)
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -322,13 +434,22 @@ app.get('/api/stock/:sku', async (req, res) => {
 
 app.get('/api/catalog', async (req, res) => {
   try {
-    const { category } = req.query;
-    const categoryFilter = category ? `&where=Category%3D'${encodeURIComponent(category)}'` : '';
+    const { category, includeStock = '1', raw } = req.query;
+    const params = category ? `where=Category%3D'${encodeURIComponent(category)}'` : '';
 
-    const [products, stockData] = await Promise.all([
-      fetchAllPages('products', `${categoryFilter}&fields=ID,SKU,Name,Category,Brand,PriceTier1,UnitCost,ShortDescription,Barcode,UOM,Status,Tags,PictureURL`),
-      fetchAllPages('products/stocklevels', categoryFilter)
-    ]);
+    // Safer call: Cin7 Omni can reject unsupported `fields` parameters.
+    // We fetch the product object as-is, then normalize image/spec fields in the proxy.
+    const products = await fetchAllPagesSafe('products', params);
+
+    let stockData = [];
+    let stockError = null;
+    if (includeStock !== '0') {
+      try {
+        stockData = await fetchAllPagesSafe('products/stocklevels', params);
+      } catch (stockErr) {
+        stockError = stockErr.message;
+      }
+    }
 
     const stockMap = {};
     stockData.forEach(item => {
@@ -339,36 +460,39 @@ app.get('/api/catalog', async (req, res) => {
         (opt.StockLevels || []).forEach(sl => {
           const qty = sl.Available ?? sl.OnHand ?? 0;
           total += qty;
-          if (!branches[sl.Name]) branches[sl.Name] = 0;
-          branches[sl.Name] += qty;
+          const branchName = sl.Name || sl.Branch || 'Unknown';
+          if (!branches[branchName]) branches[branchName] = 0;
+          branches[branchName] += qty;
         });
       });
-      stockMap[item.SKU] = {
-        availableQty: total,
-        branchStock: Object.entries(branches).map(([name, qty]) => ({ branch: name, qty }))
+
+      const sku = item.SKU || item.Code || item.ProductCode;
+      if (sku) {
+        stockMap[sku] = {
+          availableQty: total,
+          branchStock: Object.entries(branches).map(([name, qty]) => ({ branch: name, qty }))
+        };
+      }
+    });
+
+    const enriched = products.map(p => {
+      const normalized = normalizeCin7Product(p);
+      const stock = stockMap[normalized.sku] || stockMap[normalized.code] || {};
+      return {
+        ...normalized,
+        availableQty: stock.availableQty ?? null,
+        branchStock: stock.branchStock ?? [],
+        stockLastUpdated: new Date().toISOString(),
+        raw: raw === '1' ? p : undefined
       };
     });
 
-    const enriched = products.map(p => ({
-      id: p.ID,
-      sku: p.SKU,
-      name: p.Name,
-      category: p.Category,
-      brand: p.Brand,
-      price: p.PriceTier1 || p.Price || 0,
-      costPrice: p.UnitCost || 0,
-      description: p.ShortDescription || p.Description || '',
-      barcode: p.Barcode,
-      unit: p.UOM,
-      status: p.Status,
-      tags: p.Tags || '',
-      image: p.PictureURL || '',
-      availableQty: stockMap[p.SKU]?.availableQty ?? null,
-      branchStock: stockMap[p.SKU]?.branchStock ?? [],
-      stockLastUpdated: new Date().toISOString()
-    }));
-
-    res.json({ success: true, count: enriched.length, products: enriched });
+    res.json({
+      success: true,
+      count: enriched.length,
+      products: enriched,
+      stockWarning: stockError
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
