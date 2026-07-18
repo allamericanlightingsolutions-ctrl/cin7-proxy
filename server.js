@@ -789,55 +789,104 @@ function normalizeCin7LineItems(order) {
   });
 }
 
+
 function normalizeCin7SalesOrderForOperations(order, adminUser) {
-  const id = String(pickFirst(order, ['Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId']) || '');
-  const code = cleanText(pickFirst(order, ['Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number']), 80);
-  const reference = cleanText(pickFirst(order, ['Reference', 'reference', 'CustomerReference', 'customerReference']), 120);
-  const stage = cleanText(pickFirst(order, ['Stage', 'stage', 'Status', 'status']), 80);
+  const id = String(pickFirst(order, [
+    'Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId', 'OrderId', 'orderId'
+  ]) || '');
+
+  const code = cleanText(pickFirst(order, [
+    'Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number',
+    'SalesOrderNumber', 'salesOrderNumber', 'InvoiceNumber', 'invoiceNumber'
+  ]), 100);
+
+  const reference = cleanText(pickFirst(order, [
+    'Reference', 'reference', 'CustomerReference', 'customerReference',
+    'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO'
+  ]), 160);
+
+  const stage = cleanText(pickFirst(order, [
+    'Stage', 'stage', 'Status', 'status', 'OrderStatus', 'orderStatus'
+  ]), 100);
+
   const status = stage ? stage.toLowerCase().replace(/\s+/g, '_') : 'imported_from_cin7';
-  const createdAt = pickFirst(order, ['CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date']) || new Date().toISOString();
-  const updatedAt = pickFirst(order, ['ModifiedDate', 'modifiedDate', 'UpdatedAt', 'updatedAt']) || new Date().toISOString();
+
+  const createdAt = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date',
+    'OrderDate', 'orderDate'
+  ]) || new Date().toISOString();
+
+  const updatedAt = pickFirst(order, [
+    'ModifiedDate', 'modifiedDate', 'UpdatedAt', 'updatedAt', 'LastModifiedDate',
+    'lastModifiedDate'
+  ]) || new Date().toISOString();
 
   const customerName = cleanText(pickFirst(order, [
-    'Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName', 'Member', 'member'
-  ]), 160);
+    'Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName',
+    'AccountName', 'accountName', 'BillingCompany', 'billingCompany',
+    'DeliveryCompany', 'deliveryCompany'
+  ]), 180);
 
   const customerEmail = cleanText(pickFirst(order, [
-    'Email', 'email', 'CustomerEmail', 'customerEmail', 'BillingEmail', 'billingEmail'
-  ]), 160);
+    'Email', 'email', 'CustomerEmail', 'customerEmail', 'BillingEmail', 'billingEmail',
+    'ContactEmail', 'contactEmail'
+  ]), 180);
+
+  const memberName = cleanText(pickFirst(order, [
+    'Member', 'member', 'MemberName', 'memberName', 'SalesRep', 'salesRep',
+    'SalesRepresentative', 'salesRepresentative'
+  ]), 180);
+
+  const createdBy = cleanText(pickFirst(order, [
+    'CreatedBy', 'createdBy', 'User', 'user', 'EnteredBy', 'enteredBy'
+  ]), 180);
+
+  const displayNumber = code || reference || id || `CIN7-${Date.now()}`;
+  const prefixedDisplayNumber = /^cin7/i.test(displayNumber) ? displayNumber : `Cin7 #${displayNumber}`;
 
   let items = normalizeCin7LineItems(order);
   if (!items.length) {
     items = [{
       store: customerName || 'Cin7 Customer',
-      store_num: reference,
-      store_address: '',
-      store_city: '',
-      store_state: '',
-      store_zip: '',
-      store_country: '',
-      part: 'CIN7-ORDER',
-      cin7_code: '',
+      store_num: reference || code || id,
+      store_address: cleanText(pickFirst(order, ['DeliveryAddress1','deliveryAddress1','ShipAddress1','shipAddress1']), 180),
+      store_city: cleanText(pickFirst(order, ['DeliveryCity','deliveryCity','ShipCity','shipCity']), 80),
+      store_state: cleanText(pickFirst(order, ['DeliveryState','deliveryState','ShipState','shipState']), 40),
+      store_zip: cleanText(pickFirst(order, ['DeliveryPostalCode','deliveryPostalCode','ShipPostCode','shipPostCode']), 30),
+      store_country: cleanText(pickFirst(order, ['DeliveryCountry','deliveryCountry','ShipCountry','shipCountry']), 50),
+      part: code || reference || id || 'CIN7-ORDER',
+      cin7_code: code,
       vendor_part: '',
-      description: `Imported Cin7 Sales Order ${code || id}`,
+      description: `Imported Cin7 Sales Order ${displayNumber}`,
       order_qty: 1,
       location: 'Cin7',
       cin7_line_payload: null
     }];
+  } else {
+    items = items.map(item => ({
+      ...item,
+      store: item.store || customerName || 'Cin7 Customer',
+      store_num: item.store_num || reference || code || id
+    }));
   }
 
   const total = Number(pickFirst(order, [
-    'Total', 'total', 'GrandTotal', 'grandTotal', 'OrderTotal', 'orderTotal'
+    'Total', 'total', 'GrandTotal', 'grandTotal', 'OrderTotal', 'orderTotal',
+    'TotalIncTax', 'totalIncTax'
   ]) || 0) || null;
 
   return {
-    order_number: code || `CIN7-${id || Date.now()}`,
-    user_email: customerEmail || process.env.CIN7_CUSTOMER_EMAIL || process.env.CIN7_FALLBACK_EMAIL || adminUser.email,
-    created_by_email: adminUser.email,
+    order_number: prefixedDisplayNumber,
+    user_email: customerEmail || customerName || 'Imported from Cin7',
+    created_by_email: 'Imported from Cin7',
+    requested_by: customerName || customerEmail || 'Cin7',
     items,
     notes: [
       'Imported from Cin7.',
       customerName ? `Customer: ${customerName}` : '',
+      customerEmail ? `Customer email: ${customerEmail}` : '',
+      memberName ? `Member/Sales rep: ${memberName}` : '',
+      createdBy ? `Cin7 created by: ${createdBy}` : '',
       reference ? `Reference: ${reference}` : '',
       stage ? `Cin7 status/stage: ${stage}` : ''
     ].filter(Boolean).join('\n'),
@@ -848,13 +897,17 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     status,
     source: 'cin7',
     external_source: 'cin7_sales_orders',
-    external_id: id || code,
-    external_number: code,
+    external_id: id || code || reference,
+    external_number: displayNumber,
     cin7_order_id: id,
-    cin7_order_number: code,
+    cin7_order_number: displayNumber,
     cin7_status: status,
     cin7_stage: stage,
     cin7_reference: reference,
+    cin7_customer_name: customerName,
+    cin7_customer_email: customerEmail,
+    cin7_member_name: memberName,
+    cin7_created_by: createdBy,
     imported_from_cin7: true,
     imported_at: new Date().toISOString(),
     cin7_payload: order,
@@ -1060,7 +1113,7 @@ app.post('/api/send-order-email', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v9 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v10 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
