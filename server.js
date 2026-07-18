@@ -695,6 +695,252 @@ app.post('/api/shipping-rates', async (req, res) => {
   }
 });
 
+
+
+// ─── Cin7 → Operations import helpers ────────────────────────────────────────
+
+function getAuthToken(req) {
+  const auth = req.headers.authorization || '';
+  return auth.startsWith('Bearer ') ? auth.slice(7) : '';
+}
+
+async function supabaseRest(path, options = {}, token = '') {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Proxy missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.');
+  }
+
+  const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${path.replace(/^\//, '')}`;
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+    ...(options.headers || {})
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  const text = await response.text();
+
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Supabase REST error ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  }
+
+  return data;
+}
+
+function normalizeCin7OrderList(data) {
+  if (Array.isArray(data)) return data;
+  return data?.SalesOrderList
+    || data?.SalesOrders
+    || data?.Orders
+    || data?.OrderList
+    || data?.Data
+    || data?.data
+    || [];
+}
+
+function normalizeCin7LineItems(order) {
+  const rawItems =
+    order.LineItems
+    || order.lineItems
+    || order.Items
+    || order.items
+    || order.OrderLines
+    || order.orderLines
+    || [];
+
+  return (Array.isArray(rawItems) ? rawItems : []).map((line, index) => {
+    const code = cleanText(pickFirst(line, [
+      'Code', 'code', 'ProductCode', 'productCode', 'SKU', 'Sku', 'sku',
+      'OptionCode', 'optionCode', 'ItemCode', 'itemCode'
+    ]), 100);
+
+    const description = cleanText(pickFirst(line, [
+      'Name', 'name', 'ProductName', 'productName', 'Description', 'description',
+      'ItemDescription', 'itemDescription'
+    ]), 500);
+
+    const qtyRaw = pickFirst(line, ['Qty', 'qty', 'Quantity', 'quantity', 'OrderedQty', 'orderedQty']);
+    const qty = Number(qtyRaw || 1) || 1;
+
+    return {
+      store: cleanText(pickFirst(order, ['Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName']), 120),
+      store_num: cleanText(pickFirst(order, ['Reference', 'reference', 'CustomerReference', 'customerReference']), 80),
+      store_address: cleanText(pickFirst(order, ['DeliveryAddress1', 'deliveryAddress1', 'ShipAddress1', 'shipAddress1']), 180),
+      store_city: cleanText(pickFirst(order, ['DeliveryCity', 'deliveryCity', 'ShipCity', 'shipCity']), 80),
+      store_state: cleanText(pickFirst(order, ['DeliveryState', 'deliveryState', 'ShipState', 'shipState']), 40),
+      store_zip: cleanText(pickFirst(order, ['DeliveryPostalCode', 'deliveryPostalCode', 'ShipPostCode', 'shipPostCode']), 30),
+      store_country: cleanText(pickFirst(order, ['DeliveryCountry', 'deliveryCountry', 'ShipCountry', 'shipCountry']), 50),
+      part: code || `CIN7-LINE-${index + 1}`,
+      cin7_code: code,
+      vendor_part: cleanText(pickFirst(line, ['SupplierCode', 'supplierCode', 'VendorPart', 'vendorPart']), 100),
+      description: description || 'Cin7 imported line item',
+      order_qty: qty,
+      location: cleanText(pickFirst(line, ['Location', 'location', 'Bin', 'bin']), 120),
+      cin7_line_payload: line
+    };
+  });
+}
+
+function normalizeCin7SalesOrderForOperations(order, adminUser) {
+  const id = String(pickFirst(order, ['Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId']) || '');
+  const code = cleanText(pickFirst(order, ['Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number']), 80);
+  const reference = cleanText(pickFirst(order, ['Reference', 'reference', 'CustomerReference', 'customerReference']), 120);
+  const stage = cleanText(pickFirst(order, ['Stage', 'stage', 'Status', 'status']), 80);
+  const status = stage ? stage.toLowerCase().replace(/\s+/g, '_') : 'imported_from_cin7';
+  const createdAt = pickFirst(order, ['CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date']) || new Date().toISOString();
+  const updatedAt = pickFirst(order, ['ModifiedDate', 'modifiedDate', 'UpdatedAt', 'updatedAt']) || new Date().toISOString();
+
+  const customerName = cleanText(pickFirst(order, [
+    'Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName', 'Member', 'member'
+  ]), 160);
+
+  const customerEmail = cleanText(pickFirst(order, [
+    'Email', 'email', 'CustomerEmail', 'customerEmail', 'BillingEmail', 'billingEmail'
+  ]), 160);
+
+  let items = normalizeCin7LineItems(order);
+  if (!items.length) {
+    items = [{
+      store: customerName || 'Cin7 Customer',
+      store_num: reference,
+      store_address: '',
+      store_city: '',
+      store_state: '',
+      store_zip: '',
+      store_country: '',
+      part: 'CIN7-ORDER',
+      cin7_code: '',
+      vendor_part: '',
+      description: `Imported Cin7 Sales Order ${code || id}`,
+      order_qty: 1,
+      location: 'Cin7',
+      cin7_line_payload: null
+    }];
+  }
+
+  const total = Number(pickFirst(order, [
+    'Total', 'total', 'GrandTotal', 'grandTotal', 'OrderTotal', 'orderTotal'
+  ]) || 0) || null;
+
+  return {
+    order_number: code || `CIN7-${id || Date.now()}`,
+    user_email: customerEmail || process.env.CIN7_CUSTOMER_EMAIL || process.env.CIN7_FALLBACK_EMAIL || adminUser.email,
+    created_by_email: adminUser.email,
+    items,
+    notes: [
+      'Imported from Cin7.',
+      customerName ? `Customer: ${customerName}` : '',
+      reference ? `Reference: ${reference}` : '',
+      stage ? `Cin7 status/stage: ${stage}` : ''
+    ].filter(Boolean).join('\n'),
+    subtotal: null,
+    tax: null,
+    shipping: null,
+    estimated_total: total,
+    status,
+    source: 'cin7',
+    external_source: 'cin7_sales_orders',
+    external_id: id || code,
+    external_number: code,
+    cin7_order_id: id,
+    cin7_order_number: code,
+    cin7_status: status,
+    cin7_stage: stage,
+    cin7_reference: reference,
+    imported_from_cin7: true,
+    imported_at: new Date().toISOString(),
+    cin7_payload: order,
+    created_at: createdAt,
+    updated_at: updatedAt
+  };
+}
+
+async function fetchCin7SalesOrdersForImport({ rows = 100, pages = 2 } = {}) {
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 100, 1), 250);
+  const safePages = Math.min(Math.max(parseInt(pages, 10) || 2, 1), 20);
+  const all = [];
+
+  for (let page = 1; page <= safePages; page++) {
+    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
+    const data = await cin7Fetch(url);
+    const items = normalizeCin7OrderList(data);
+
+    if (!items.length) break;
+    all.push(...items);
+    if (items.length < safeRows) break;
+    await sleep(350);
+  }
+
+  return all;
+}
+
+// ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
+
+app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+
+    const rows = req.body?.rows || req.query.rows || 100;
+    const pages = req.body?.pages || req.query.pages || 2;
+
+    const cin7Orders = await fetchCin7SalesOrdersForImport({ rows, pages });
+    const normalized = cin7Orders
+      .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
+      .filter(order => order.external_id || order.external_number);
+
+    if (!normalized.length) {
+      return res.json({
+        success: true,
+        imported: 0,
+        message: 'No Cin7 sales orders found to import.',
+        rows,
+        pages
+      });
+    }
+
+    const imported = await supabaseRest(
+      'orders?on_conflict=external_source,external_id',
+      {
+        method: 'POST',
+        headers: {
+          Prefer: 'resolution=merge-duplicates,return=representation'
+        },
+        body: JSON.stringify(normalized)
+      },
+      token
+    );
+
+    res.json({
+      success: true,
+      fetched: cin7Orders.length,
+      imported: Array.isArray(imported) ? imported.length : normalized.length,
+      source: 'cin7_sales_orders',
+      rows,
+      pages,
+      orders: (Array.isArray(imported) ? imported : normalized).map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        external_id: o.external_id,
+        cin7_order_id: o.cin7_order_id,
+        cin7_order_number: o.cin7_order_number,
+        status: o.status
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // ─── Send approved catalog order to Cin7 as Draft/New Sales Order ─────────────
 
 app.post('/api/send-order-to-cin7', async (req, res) => {
@@ -814,7 +1060,7 @@ app.post('/api/send-order-email', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v9 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
