@@ -245,33 +245,69 @@ function normalizeCin7Product(p) {
   };
 }
 
+
 async function verifyAdmin(req) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('Proxy missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.');
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    throw new Error('Missing Authorization token.');
   }
 
-  const auth = req.headers.authorization || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token) throw new Error('Missing Supabase user token.');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables.');
+  }
 
-  const userRes = await fetch(`${SUPABASE_URL.replace(/\/$/, '')}/auth/v1/user`, {
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${token}`
     }
   });
 
-  if (!userRes.ok) throw new Error('Could not verify Supabase session.');
+  const user = await userRes.json().catch(() => null);
 
-  const user = await userRes.json();
-  const email = String(user.email || '').toLowerCase();
-
-  if (email !== ADMIN_EMAIL) {
-    throw new Error(`Only ${ADMIN_EMAIL} can send orders to Cin7.`);
+  if (!userRes.ok || !user?.email) {
+    throw new Error('Could not verify Supabase user.');
   }
 
-  return user;
+  const email = String(user.email || '').toLowerCase();
+
+  const staticAdmins = String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const fallbackAdmins = [
+    'l.gonzalez@allamericanlightingsolutions.com',
+    'l.gonzalez@aalsusa.com',
+    'e.suarez@allamericanlightingsolutions.com'
+  ];
+
+  if ([...staticAdmins, ...fallbackAdmins].includes(email)) {
+    return { ...user, email };
+  }
+
+  // Shared Supabase admin table fallback
+  try {
+    const adminCheckUrl = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/aals_admin_users?select=email,is_active&email=eq.${encodeURIComponent(email)}&is_active=eq.true`;
+    const adminRes = await fetch(adminCheckUrl, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`
+      }
+    });
+    const adminRows = await adminRes.json().catch(() => []);
+    if (adminRes.ok && Array.isArray(adminRows) && adminRows.length) {
+      return { ...user, email };
+    }
+  } catch (err) {
+    console.warn('Shared admin table check failed:', err.message);
+  }
+
+  throw new Error(`Only AALS admins can send orders to Cin7. Current user: ${email}`);
 }
+
 
 function cleanText(value, max = 250) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -1113,7 +1149,7 @@ app.post('/api/send-order-email', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v10 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v11 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
