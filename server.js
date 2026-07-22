@@ -1070,7 +1070,7 @@ function sortCin7SalesOrdersLikeCin7V14(items) {
   });
 }
 
-async function fetchCin7SalesOrdersForImport({ rows = 250, pages = 5 } = {}) {
+async function fetchCin7SalesOrdersForImport({ rows = 175, pages = 2 } = {}) {
   const safeRows = Math.min(Math.max(parseInt(rows, 10) || 100, 1), 250);
   const safePages = Math.min(Math.max(parseInt(pages, 10) || 2, 1), 20);
   const all = [];
@@ -1096,8 +1096,8 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const adminUser = await verifyAdmin(req);
     const token = getAuthToken(req);
 
-    const rows = req.body?.rows || req.query.rows || 250;
-    const pages = req.body?.pages || req.query.pages || 5;
+    const rows = req.body?.rows || req.query.rows || 175;
+    const pages = req.body?.pages || req.query.pages || 2;
 
     const cin7Orders = await fetchCin7SalesOrdersForImport({ rows, pages });
     const normalized = cin7Orders
@@ -1311,5 +1311,10 @@ app.listen(PORT, () => {
 
 
 // --- v14 Cin7 sync behavior note ---
-// The sync now requests more records by default (250 x 5 pages) and sorts Cin7 imports
+// The sync now requests a safer limited batch by default (175 x 2 pages) and sorts Cin7 imports
 // by Created Date and Ref so Operations visually matches the Cin7 Sales Orders list more closely.
+
+
+// --- v15 Cin7 sync limit note ---
+// Sync default is intentionally limited to approximately 350 records
+// using 175 rows x 2 pages to avoid Supabase statement timeouts.
