@@ -13,6 +13,84 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'l.gonzalez@allamericanlightingsolutions.com').toLowerCase();
 
+
+// --- v12 Cin7 tracking/status extraction helpers ---
+function firstValueV12(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k];
+  }
+  return null;
+}
+function deepFindValueV12(obj, keyRegex, maxDepth=4){
+  const seen=new Set();
+  function walk(x,depth){
+    if(!x || depth>maxDepth || seen.has(x))return null;
+    if(typeof x==='object')seen.add(x);
+    if(Array.isArray(x)){
+      for(const item of x){
+        const v=walk(item,depth+1);
+        if(v!==null && v!==undefined && String(v).trim()!=='')return v;
+      }
+      return null;
+    }
+    if(typeof x==='object'){
+      for(const [k,v] of Object.entries(x)){
+        if(keyRegex.test(k) && v!==null && v!==undefined && String(v).trim()!=='')return v;
+      }
+      for(const v of Object.values(x)){
+        const found=walk(v,depth+1);
+        if(found!==null && found!==undefined && String(found).trim()!=='')return found;
+      }
+    }
+    return null;
+  }
+  return walk(obj,0);
+}
+function cin7TrackingInfoV12(order){
+  const tracking = firstValueV12(order, [
+    'tracking','trackingNumber','tracking_number','TrackingNumber','TrackingNo','trackingNo',
+    'consignmentNumber','ConsignmentNumber','shipmentTracking','ShipmentTracking'
+  ]) || deepFindValueV12(order, /(tracking|consignment).*?(number|no)?$/i);
+
+  const carrier = firstValueV12(order, [
+    'carrier','Carrier','shippingCarrier','ShippingCarrier','shipCarrier','ShipCarrier',
+    'deliveryCompany','DeliveryCompany','freightProvider','FreightProvider'
+  ]) || deepFindValueV12(order, /(carrier|deliveryCompany|freightProvider|shippingProvider)/i);
+
+  const eta = firstValueV12(order, [
+    'eta','ETA','estimatedDelivery','EstimatedDelivery','deliveryDate','DeliveryDate',
+    'requiredBy','RequiredBy'
+  ]) || deepFindValueV12(order, /(eta|estimatedDelivery|deliveryDate|requiredBy)/i);
+
+  const etd = firstValueV12(order, [
+    'etd','ETD','dispatchDate','DispatchDate','shippedDate','ShippedDate',
+    'shipDate','ShipDate'
+  ]) || deepFindValueV12(order, /(etd|dispatchDate|shippedDate|shipDate)/i);
+
+  const status = firstValueV12(order, ['status','Status','stage','Stage','orderStatus','OrderStatus']);
+  const shipMethod = firstValueV12(order, ['shipMethod','ShipMethod','shippingMethod','ShippingMethod','deliveryMethod','DeliveryMethod']);
+
+  return {
+    tracking: tracking ? String(tracking).trim() : null,
+    carrier: carrier ? String(carrier).trim() : (shipMethod ? String(shipMethod).trim() : null),
+    eta: eta || null,
+    etd: etd || null,
+    cin7_status: status ? String(status).trim() : null,
+    ship_method: shipMethod ? String(shipMethod).trim() : null
+  };
+}
+function mapCin7StatusV12(status, tracking){
+  const s=String(status||'').toLowerCase();
+  if(/cancel/.test(s))return 'cancelled';
+  if(/deliver|complete|fulfilled|closed/.test(s))return 'delivered';
+  if(/dispatch|shipp|transit|picked/.test(s) || tracking)return 'shipped';
+  if(/approved|authorized|release|pick|pack|process/.test(s))return 'processing';
+  if(/quote|approval|pending/.test(s))return 'pending_approval';
+  if(/new|draft/.test(s))return 'created';
+  return null;
+}
+
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -837,6 +915,8 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
   ]), 100);
 
   const reference = cleanText(pickFirst(order, [
+    // Cin7 Sales Orders list uses Ref. This is the number AALS wants to track.
+    'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
     'Reference', 'reference', 'CustomerReference', 'customerReference',
     'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO'
   ]), 160);
@@ -877,8 +957,8 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     'CreatedBy', 'createdBy', 'User', 'user', 'EnteredBy', 'enteredBy'
   ]), 180);
 
-  const displayNumber = code || reference || id || `CIN7-${Date.now()}`;
-  const prefixedDisplayNumber = /^cin7/i.test(displayNumber) ? displayNumber : `Cin7 #${displayNumber}`;
+  const displayNumber = reference || code || id || `CIN7-${Date.now()}`;
+  const prefixedDisplayNumber = /^cin7/i.test(displayNumber) ? displayNumber : (reference ? `Cin7 Ref #${displayNumber}` : `Cin7 #${displayNumber}`);
 
   let items = normalizeCin7LineItems(order);
   if (!items.length) {
@@ -913,6 +993,8 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
 
   return {
     order_number: prefixedDisplayNumber,
+    reference: reference || displayNumber,
+    ref: reference || displayNumber,
     user_email: customerEmail || customerName || 'Imported from Cin7',
     created_by_email: 'Imported from Cin7',
     requested_by: customerName || customerEmail || 'Cin7',
@@ -933,13 +1015,14 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     status,
     source: 'cin7',
     external_source: 'cin7_sales_orders',
-    external_id: id || code || reference,
+    external_id: id || reference || code,
     external_number: displayNumber,
     cin7_order_id: id,
-    cin7_order_number: displayNumber,
+    cin7_order_number: code || displayNumber,
+    cin7_ref_number: reference || displayNumber,
     cin7_status: status,
     cin7_stage: stage,
-    cin7_reference: reference,
+    cin7_reference: reference || displayNumber,
     cin7_customer_name: customerName,
     cin7_customer_email: customerEmail,
     cin7_member_name: memberName,
@@ -1021,6 +1104,8 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         external_id: o.external_id,
         cin7_order_id: o.cin7_order_id,
         cin7_order_number: o.cin7_order_number,
+        cin7_reference: o.cin7_reference,
+        reference: o.reference,
         status: o.status
       }))
     });
@@ -1155,3 +1240,28 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
 });
+
+
+// --- v12 NOTE FOR CIN7 IMPORT ENDPOINT ---
+// In the Cin7 import/sync mapping, add these fields to the Supabase upsert payload:
+//
+// const shipV12 = cin7TrackingInfoV12(cin7Order);
+// const mappedStatusV12 = mapCin7StatusV12(shipV12.cin7_status, shipV12.tracking);
+//
+// payload.tracking = shipV12.tracking || payload.tracking || null;
+// payload.tracking_number = shipV12.tracking || payload.tracking_number || null;
+// payload.carrier = shipV12.carrier || payload.carrier || null;
+// payload.etd = shipV12.etd || payload.etd || null;
+// payload.eta = shipV12.eta || payload.eta || null;
+// payload.ship_method = shipV12.ship_method || payload.ship_method || null;
+// payload.cin7_status = shipV12.cin7_status || payload.cin7_status || null;
+// if(mappedStatusV12) payload.status = mappedStatusV12;
+//
+// This lets Operations sync tracking/carrier/ETA/ETD whenever Cin7 returns those values.
+
+
+// --- v13 Cin7 reference-number note ---
+// AALS Operations should display and track Cin7 Sales Orders by the Cin7 Ref column.
+// The import normalization above now prioritizes Ref / Reference / SalesOrderRef over invoice/order number.
+// Cin7 quotes that appear in the Sales Orders list as Draft, Quote Approval Pending, or related stages
+// are imported through the same SalesOrders sync endpoint and retain their Cin7 Ref.
