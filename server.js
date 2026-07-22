@@ -1035,7 +1035,42 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
   };
 }
 
-async function fetchCin7SalesOrdersForImport({ rows = 100, pages = 2 } = {}) {
+
+function cin7CreatedMillisV14(order) {
+  const raw = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date',
+    'OrderDate', 'orderDate'
+  ]);
+  const d = new Date(raw || 0);
+  return Number.isFinite(d.getTime()) ? d.getTime() : 0;
+}
+
+function cin7RefValueV14(order) {
+  const v = cleanText(pickFirst(order, [
+    'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
+    'Reference', 'reference', 'CustomerReference', 'customerReference',
+    'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO',
+    'Code', 'code'
+  ]), 160);
+  return v || '';
+}
+
+function cin7RefNumericV14(order) {
+  const m = String(cin7RefValueV14(order)).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+function sortCin7SalesOrdersLikeCin7V14(items) {
+  return (items || []).slice().sort((a, b) => {
+    const cd = cin7CreatedMillisV14(b) - cin7CreatedMillisV14(a);
+    if (cd !== 0) return cd;
+    const rn = cin7RefNumericV14(b) - cin7RefNumericV14(a);
+    if (rn !== 0) return rn;
+    return String(cin7RefValueV14(b)).localeCompare(String(cin7RefValueV14(a)));
+  });
+}
+
+async function fetchCin7SalesOrdersForImport({ rows = 250, pages = 5 } = {}) {
   const safeRows = Math.min(Math.max(parseInt(rows, 10) || 100, 1), 250);
   const safePages = Math.min(Math.max(parseInt(pages, 10) || 2, 1), 20);
   const all = [];
@@ -1051,7 +1086,7 @@ async function fetchCin7SalesOrdersForImport({ rows = 100, pages = 2 } = {}) {
     await sleep(350);
   }
 
-  return all;
+  return sortCin7SalesOrdersLikeCin7V14(all);
 }
 
 // ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
@@ -1061,13 +1096,21 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const adminUser = await verifyAdmin(req);
     const token = getAuthToken(req);
 
-    const rows = req.body?.rows || req.query.rows || 100;
-    const pages = req.body?.pages || req.query.pages || 2;
+    const rows = req.body?.rows || req.query.rows || 250;
+    const pages = req.body?.pages || req.query.pages || 5;
 
     const cin7Orders = await fetchCin7SalesOrdersForImport({ rows, pages });
     const normalized = cin7Orders
       .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
-      .filter(order => order.external_id || order.external_number);
+      .filter(order => order.external_id || order.external_number)
+      .sort((a, b) => {
+        const ad = new Date(a.created_at || 0).getTime() || 0;
+        const bd = new Date(b.created_at || 0).getTime() || 0;
+        if (bd !== ad) return bd - ad;
+        const ar = String(a.cin7_reference || a.reference || '').match(/(\d+)/);
+        const br = String(b.cin7_reference || b.reference || '').match(/(\d+)/);
+        return (br ? parseInt(br[1], 10) : -1) - (ar ? parseInt(ar[1], 10) : -1);
+      });
 
     if (!normalized.length) {
       return res.json({
@@ -1265,3 +1308,8 @@ app.listen(PORT, () => {
 // The import normalization above now prioritizes Ref / Reference / SalesOrderRef over invoice/order number.
 // Cin7 quotes that appear in the Sales Orders list as Draft, Quote Approval Pending, or related stages
 // are imported through the same SalesOrders sync endpoint and retain their Cin7 Ref.
+
+
+// --- v14 Cin7 sync behavior note ---
+// The sync now requests more records by default (250 x 5 pages) and sorts Cin7 imports
+// by Created Date and Ref so Operations visually matches the Cin7 Sales Orders list more closely.
