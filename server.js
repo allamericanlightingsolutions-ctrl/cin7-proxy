@@ -1122,26 +1122,37 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       });
     }
 
+    // v16 IMPORTANT:
+    // Use ignore-duplicates instead of merge-duplicates.
+    // This makes Cin7 Sync import ONLY new Cin7 orders.
+    // Existing Operations records are preserved so manual changes such as:
+    // Approved status, notes, tracking, ETA/ETD, carrier, and internal follow-up
+    // are not overwritten by the next Cin7 sync.
     const imported = await supabaseRest(
       'orders?on_conflict=external_source,external_id',
       {
         method: 'POST',
         headers: {
-          Prefer: 'resolution=merge-duplicates,return=representation'
+          Prefer: 'resolution=ignore-duplicates,return=representation'
         },
         body: JSON.stringify(normalized)
       },
       token
     );
 
+    const insertedRows = Array.isArray(imported) ? imported : [];
+
     res.json({
       success: true,
       fetched: cin7Orders.length,
-      imported: Array.isArray(imported) ? imported.length : normalized.length,
+      imported: insertedRows.length,
+      skipped_existing: Math.max(0, normalized.length - insertedRows.length),
       source: 'cin7_sales_orders',
+      sync_mode: 'new_records_only_preserve_operations_changes',
       rows,
       pages,
-      orders: (Array.isArray(imported) ? imported : normalized).map(o => ({
+      message: 'Cin7 Sync imported only new records. Existing Operations records were preserved and not overwritten.',
+      orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
         external_id: o.external_id,
@@ -1277,7 +1288,7 @@ app.post('/api/send-order-email', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v11 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v16 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
@@ -1318,3 +1329,9 @@ app.listen(PORT, () => {
 // --- v15 Cin7 sync limit note ---
 // Sync default is intentionally limited to approximately 350 records
 // using 175 rows x 2 pages to avoid Supabase statement timeouts.
+
+
+// --- v16 Cin7 Sync Preserve Operations Changes ---
+// Sync mode changed from merge-duplicates to ignore-duplicates.
+// Existing Cin7-imported records in Operations are no longer overwritten.
+// Manual Operations status/approval/tracking/notes remain saved after future Cin7 syncs.
