@@ -1089,6 +1089,31 @@ async function fetchCin7SalesOrdersForImport({ rows = 175, pages = 2 } = {}) {
   return sortCin7SalesOrdersLikeCin7V14(all);
 }
 
+
+function parseCin7SyncDateV17(value, fallback) {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+  const d = new Date(raw + (raw.length === 10 ? 'T00:00:00' : ''));
+  return Number.isFinite(d.getTime()) ? d : fallback;
+}
+
+function cin7OrderDateForSyncV17(order) {
+  const raw = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt',
+    'Date', 'date', 'OrderDate', 'orderDate'
+  ]);
+  const d = new Date(raw || 0);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+function filterCin7OrdersByDateRangeV17(orders, startDate, endDateExclusive) {
+  return (orders || []).filter(order => {
+    const d = cin7OrderDateForSyncV17(order);
+    if (!d) return false;
+    return d >= startDate && d < endDateExclusive;
+  });
+}
+
 // ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
 
 app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
@@ -1099,7 +1124,28 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const rows = req.body?.rows || req.query.rows || 175;
     const pages = req.body?.pages || req.query.pages || 2;
 
-    const cin7Orders = await fetchCin7SalesOrdersForImport({ rows, pages });
+    // v17 date window:
+    // Default: June 1 through August 1 of the current year,
+    // which imports June and July only.
+    // You can override in Render with:
+    // CIN7_SYNC_START_DATE=2026-06-01
+    // CIN7_SYNC_END_DATE=2026-08-01
+    // End date is exclusive, so 2026-08-01 means through July 31.
+    const currentYearV17 = new Date().getFullYear();
+    const defaultStartV17 = new Date(`${currentYearV17}-06-01T00:00:00`);
+    const defaultEndV17 = new Date(`${currentYearV17}-08-01T00:00:00`);
+    const startDateV17 = parseCin7SyncDateV17(
+      req.body?.start_date || req.query.start_date || process.env.CIN7_SYNC_START_DATE,
+      defaultStartV17
+    );
+    const endDateV17 = parseCin7SyncDateV17(
+      req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE,
+      defaultEndV17
+    );
+
+    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, pages });
+    const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
+
     const normalized = cin7Orders
       .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
       .filter(order => order.external_id || order.external_number)
@@ -1145,13 +1191,18 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     res.json({
       success: true,
       fetched: cin7Orders.length,
+      fetched_before_date_filter: typeof cin7OrdersAll !== 'undefined' ? cin7OrdersAll.length : cin7Orders.length,
       imported: insertedRows.length,
       skipped_existing: Math.max(0, normalized.length - insertedRows.length),
       source: 'cin7_sales_orders',
-      sync_mode: 'new_records_only_preserve_operations_changes',
+      sync_mode: 'new_records_only_june_july_preserve_operations_changes',
+      date_filter: {
+        start_date: startDateV17.toISOString().slice(0, 10),
+        end_date_exclusive: endDateV17.toISOString().slice(0, 10)
+      },
       rows,
       pages,
-      message: 'Cin7 Sync imported only new records. Existing Operations records were preserved and not overwritten.',
+      message: 'Cin7 Sync imported only new records inside the selected date range. Existing Operations records were preserved and not overwritten.',
       orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
@@ -1288,7 +1339,7 @@ app.post('/api/send-order-email', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v16 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v17 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
@@ -1335,3 +1386,10 @@ app.listen(PORT, () => {
 // Sync mode changed from merge-duplicates to ignore-duplicates.
 // Existing Cin7-imported records in Operations are no longer overwritten.
 // Manual Operations status/approval/tracking/notes remain saved after future Cin7 syncs.
+
+
+// --- v17 Cin7 Sync Date Range ---
+// Sync now imports only records inside a date window.
+// Default window is current-year June and July:
+// start = YYYY-06-01, end exclusive = YYYY-08-01.
+// Existing Operations changes are still preserved because v16 ignore-duplicates remains active.
