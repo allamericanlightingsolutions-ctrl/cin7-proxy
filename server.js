@@ -1,80 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
--- ============================================================
--- AALS Operations - Optional Cleanup for Old Cin7 Imports
---
--- Purpose:
--- Removes old Cin7-imported records from Operations/Supabase only.
--- This DOES NOT delete anything in Cin7.
---
--- Keeps:
---   - Cin7 imported orders created from 2026-06-01 through 2026-07-31
---   - Non-Cin7 orders/quotes/special requests
---
--- Deletes from Operations only:
---   - Cin7 imported orders before June 1, 2026
---   - Cin7 imported orders on/after August 1, 2026
---
--- Run Step 1 first to preview.
--- Run Step 2 only if the preview looks correct.
--- ============================================================
 
-
--- ============================================================
--- STEP 1: PREVIEW OLD CIN7 RECORDS THAT WOULD BE REMOVED
--- ============================================================
-select
-  id,
-  order_number,
-  reference,
-  status,
-  created_at,
-  source,
-  external_source,
-  imported_from_cin7
-from public.orders
-where
-  (
-    imported_from_cin7 = true
-    or lower(coalesce(source,'')) = 'cin7'
-    or lower(coalesce(external_source,'')) like '%cin7%'
-    or order_number ilike 'Cin7%'
-  )
-  and (
-    created_at < timestamp with time zone '2026-06-01 00:00:00+00'
-    or created_at >= timestamp with time zone '2026-08-01 00:00:00+00'
-  )
-order by created_at desc;
-
-
--- ============================================================
--- STEP 2: DELETE OLD CIN7 IMPORTS FROM OPERATIONS ONLY
---
--- IMPORTANT:
--- Only run this DELETE after reviewing Step 1.
--- This does NOT delete anything from Cin7.
--- To activate it, remove the -- from each DELETE line below.
--- ============================================================
-
--- delete from public.orders
--- where
---   (
---     imported_from_cin7 = true
---     or lower(coalesce(source,'')) = 'cin7'
---     or lower(coalesce(external_source,'')) like '%cin7%'
---     or order_number ilike 'Cin7%'
---   )
---   and (
---     created_at < timestamp with time zone '2026-06-01 00:00:00+00'
---     or created_at >= timestamp with time zone '2026-08-01 00:00:00+00'
---   );
-
-
--- ============================================================
--- STEP 3: RELOAD API SCHEMA CACHE
--- ============================================================
-notify pgrst, 'reload schema';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -463,6 +390,132 @@ async function verifyAdmin(req) {
 function cleanText(value, max = 250) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
+
+
+// ─── v19 Gmail SMTP email sender, no external dependency required ─────────────
+
+const tls = require('tls');
+const crypto = require('crypto');
+
+function smtpReadLineV19(socket, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    let timer = null;
+    function cleanup() {
+      clearTimeout(timer);
+      socket.off('data', onData);
+      socket.off('error', onError);
+    }
+    function onError(err) {
+      cleanup();
+      reject(err);
+    }
+    function onData(chunk) {
+      const text = chunk.toString('utf8');
+      // SMTP multiline responses use "250-" for continuation and "250 " for final.
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const last = lines[lines.length - 1] || text;
+      if (/^\d{3}\s/.test(last) || lines.length === 1) {
+        cleanup();
+        resolve(text);
+      }
+    }
+    timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('SMTP timeout waiting for server response.'));
+    }, timeoutMs);
+    socket.on('data', onData);
+    socket.on('error', onError);
+  });
+}
+
+async function smtpCommandV19(socket, command, expectedCodes = []) {
+  if (command) socket.write(command + '\r\n');
+  const response = await smtpReadLineV19(socket);
+  const code = Number(String(response).slice(0, 3));
+  if (expectedCodes.length && !expectedCodes.includes(code)) {
+    throw new Error(`SMTP command failed (${command || 'read'}): ${response}`);
+  }
+  return response;
+}
+
+function smtpEscapeAddressV19(email) {
+  return String(email || '').replace(/[<>\r\n]/g, '').trim();
+}
+
+function buildMimeEmailV19({ fromEmail, to, subject, html }) {
+  const boundary = 'aals_' + crypto.randomBytes(12).toString('hex');
+  const toList = (to || []).map(smtpEscapeAddressV19).filter(Boolean).join(', ');
+  return [
+    `From: AALS Catalog <${smtpEscapeAddressV19(fromEmail)}>`,
+    `To: ${toList}`,
+    `Subject: ${String(subject || '').replace(/\r?\n/g, ' ')}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    String(html || ''),
+    '',
+    `--${boundary}--`,
+    '.',
+    ''
+  ].join('\r\n');
+}
+
+async function sendGmailSmtpEmailV19({ fromEmail, to, subject, html }) {
+  const SMTP_USER = process.env.SMTP_USER || process.env.GMAIL_USER || '';
+  const SMTP_PASS = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
+
+  if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error('SMTP_USER and SMTP_PASS are not configured.');
+  }
+
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT || 465);
+  const sender = fromEmail || process.env.FROM_EMAIL || SMTP_USER;
+  const recipients = (to || []).map(smtpEscapeAddressV19).filter(Boolean);
+
+  if (!recipients.length) throw new Error('No email recipients provided.');
+
+  return await new Promise((resolve, reject) => {
+    const socket = tls.connect(port, host, { servername: host }, async () => {
+      try {
+        await smtpReadLineV19(socket);
+        await smtpCommandV19(socket, 'EHLO aals-catalog.local', [250]);
+        await smtpCommandV19(socket, 'AUTH LOGIN', [334]);
+        await smtpCommandV19(socket, Buffer.from(SMTP_USER).toString('base64'), [334]);
+        await smtpCommandV19(socket, Buffer.from(SMTP_PASS).toString('base64'), [235]);
+        await smtpCommandV19(socket, `MAIL FROM:<${smtpEscapeAddressV19(sender)}>`, [250]);
+        for (const recipient of recipients) {
+          await smtpCommandV19(socket, `RCPT TO:<${recipient}>`, [250, 251]);
+        }
+        await smtpCommandV19(socket, 'DATA', [354]);
+        socket.write(buildMimeEmailV19({ fromEmail: sender, to: recipients, subject, html }));
+        const dataResponse = await smtpReadLineV19(socket);
+        const dataCode = Number(String(dataResponse).slice(0, 3));
+        if (![250].includes(dataCode)) {
+          throw new Error(`SMTP DATA failed: ${dataResponse}`);
+        }
+        await smtpCommandV19(socket, 'QUIT', [221]);
+        socket.end();
+        resolve({ id: 'gmail-smtp-' + Date.now(), provider: 'gmail_smtp' });
+      } catch (err) {
+        try { socket.end(); } catch (_) {}
+        reject(err);
+      }
+    });
+
+    socket.setTimeout(30000, () => {
+      try { socket.destroy(); } catch (_) {}
+      reject(new Error('SMTP connection timeout.'));
+    });
+
+    socket.on('error', reject);
+  });
+}
+
 
 function getFirstItem(order) {
   return Array.isArray(order.items) && order.items.length ? order.items[0] : {};
@@ -1341,78 +1394,244 @@ app.post('/api/send-order-to-cin7', async (req, res) => {
   }
 });
 
-// ─── Email confirmation endpoint, preserved in simplified form ────────────────
 
-app.post('/api/send-order-email', async (req, res) => {
+// ─── Catalog confirmation emails: orders, quotes, special product requests ────
+
+async function verifyCatalogUser(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    throw new Error('Missing Authorization token.');
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables.');
+  }
+
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const user = await userRes.json().catch(() => null);
+  if (!userRes.ok || !user?.email) {
+    throw new Error('Could not verify Supabase user.');
+  }
+
+  return { ...user, email: String(user.email || '').toLowerCase() };
+}
+
+function safeEmailHtml(value, max = 500) {
+  return cleanText(value, max)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function catalogRecordNumberV18(record, type) {
+  return cleanText(
+    record?.order_number ||
+    record?.quote_number ||
+    record?.number ||
+    (String(type).toLowerCase().includes('quote') ? `AALS-Q-${Date.now()}` : `AALS-${Date.now()}`),
+    80
+  );
+}
+
+function catalogConfirmationHtmlV18(record, type, userEmail) {
+  const normalizedType = String(type || '').toLowerCase();
+  const isQuote = normalizedType.includes('quote');
+  const isSpecial = !!(record?.items || []).find(item => item?.special_quote) || /special product request/i.test(String(record?.notes || ''));
+  const title = isSpecial ? 'AALS Special Product Request Confirmation' : (isQuote ? 'AALS Quote Request Confirmation' : 'AALS Order Request Confirmation');
+  const numberLabel = isSpecial || isQuote ? 'Quote Number' : 'Order Number';
+  const number = catalogRecordNumberV18(record, type);
+
+  const itemsRows = (record.items || []).map(item => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.store || '')}${item.store_num ? ' #' + safeEmailHtml(item.store_num) : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.part || item.cin7_code || '')}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.description || '', 180)}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${safeEmailHtml(item.order_qty || 0)}</td>
+    </tr>
+  `).join('');
+
+  const intro = isSpecial
+    ? 'Your special product request has been received and will be reviewed by AALS.'
+    : isQuote
+      ? 'Your quote request has been received and will be reviewed by AALS.'
+      : 'Your order request has been received and will be reviewed by AALS.';
+
+  return `
+    <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A;line-height:1.45;">
+      <div style="border-bottom:4px solid #c8102e;padding-bottom:12px;margin-bottom:18px;">
+        <h2 style="margin:0;color:#0B1F3A;">${title}</h2>
+        <p style="margin:6px 0 0;color:#64748b;">${intro}</p>
+      </div>
+
+      <p><b>${numberLabel}:</b> ${safeEmailHtml(number)}</p>
+      <p><b>Status:</b> Pending Approval / Review</p>
+      <p><b>Requested by:</b> ${safeEmailHtml(userEmail || record.user_email || '')}</p>
+
+      <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;margin-top:14px;border:1px solid #e2e8f0;">
+        <thead>
+          <tr style="background:#0B1F3A;color:#ffffff;">
+            <th style="padding:9px;text-align:left;">Store</th>
+            <th style="padding:9px;text-align:left;">Part #</th>
+            <th style="padding:9px;text-align:left;">Description</th>
+            <th style="padding:9px;text-align:center;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>${itemsRows || '<tr><td colspan="4" style="padding:10px;">No items listed.</td></tr>'}</tbody>
+      </table>
+
+      ${record.notes ? `<div style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;"><b>Notes:</b><br>${safeEmailHtml(record.notes, 1500)}</div>` : ''}
+
+      <p style="margin-top:18px;color:#475569;">
+        Final pricing, tax, shipping, availability, approval, ETA and tracking will be managed by AALS through the Operations platform and Cin7.
+      </p>
+
+      <p style="font-size:12px;color:#64748b;margin-top:18px;">
+        This is an automatic confirmation that your request was submitted through the AALS Catalog.
+      </p>
+    </div>
+  `;
+}
+
+async function sendResendEmailV18({ fromEmail, to, subject, html }) {
+  // v19: Prefer Gmail SMTP when SMTP_USER and SMTP_PASS are configured.
+  // This avoids Resend testing-mode recipient restrictions.
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return await sendGmailSmtpEmailV19({ fromEmail, to, subject, html });
+  }
+
+  const RESEND_KEY = process.env.RESEND_KEY;
+  if (!RESEND_KEY) throw new Error('No email provider configured. Add SMTP_USER/SMTP_PASS for Gmail SMTP or RESEND_KEY for Resend.');
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: `AALS Catalog <${fromEmail}>`,
+      to,
+      subject,
+      html
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.id) {
+    throw new Error(data.message || data.error || 'Resend failed to send email.');
+  }
+  return data;
+}
+
+app.post('/api/send-catalog-confirmation-email', async (req, res) => {
   try {
-    const { order, userEmail } = req.body;
-    if (!order || !userEmail) return res.status(400).json({ success: false, error: 'Missing order or email' });
+    const verifiedUser = await verifyCatalogUser(req);
+    const { record, type } = req.body || {};
 
-    const RESEND_KEY = process.env.RESEND_KEY;
-    if (!RESEND_KEY) return res.status(400).json({ success: false, error: 'RESEND_KEY is not configured.' });
+    if (!record) return res.status(400).json({ success: false, error: 'Missing record.' });
+
+    const recordUserEmail = String(record.user_email || '').trim().toLowerCase();
+    const userEmail = recordUserEmail || verifiedUser.email;
+
+    if (!isValidEmail(userEmail)) {
+      return res.status(400).json({ success: false, error: 'Missing valid recipient email.' });
+    }
 
     const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
-    const adminEmail = process.env.ADMIN_EMAIL || 'l.gonzalez@allamericanlightingsolutions.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'orders2@aalsusa.com';
+    const extraAdmins = String(process.env.CATALOG_CONFIRMATION_CC || '')
+      .split(',')
+      .map(e => e.trim())
+      .filter(Boolean)
+      .filter(isValidEmail);
 
-    const itemsRows = (order.items || []).map(item => `
-      <tr>
-        <td>${cleanText(item.store || '')}${item.store_num ? ' #' + cleanText(item.store_num) : ''}</td>
-        <td>${cleanText(item.part || item.cin7_code || '')}</td>
-        <td>${cleanText(item.description || '', 120)}</td>
-        <td>${cleanText(item.order_qty || 0)}</td>
-      </tr>
-    `).join('');
+    const number = catalogRecordNumberV18(record, type);
+    const normalizedType = String(type || '').toLowerCase();
+    const isQuote = normalizedType.includes('quote');
+    const isSpecial = !!(record?.items || []).find(item => item?.special_quote) || /special product request/i.test(String(record?.notes || ''));
 
-    const htmlBody = `
-      <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A">
-        <h2>AALS Order Confirmation</h2>
-        <p>Your order has been received and is being processed.</p>
-        <p><b>Order Number:</b> ${cleanText(order.order_number)}</p>
-        <p><b>Status:</b> Pending</p>
-        <table border="1" cellspacing="0" cellpadding="8" style="border-collapse:collapse">
-          <thead><tr><th>Store</th><th>Part #</th><th>Description</th><th>Qty</th></tr></thead>
-          <tbody>${itemsRows}</tbody>
-        </table>
-        ${order.notes ? `<p><b>Notes:</b> ${cleanText(order.notes, 1000)}</p>` : ''}
-        <p>Final pricing, tax, shipping, and availability will be confirmed by AALS through Cin7.</p>
-      </div>
-    `;
+    const label = isSpecial ? 'Special Product Request' : (isQuote ? 'Quote Request' : 'Order Request');
+    const htmlBody = catalogConfirmationHtmlV18(record, type, userEmail);
 
-    const resCustomer = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: `AALS Orders <${fromEmail}>`,
-        to: [userEmail],
-        subject: `Order Confirmation - ${order.order_number}`,
-        html: htmlBody
-      })
+    const customerResult = await sendResendEmailV18({
+      fromEmail,
+      to: [userEmail],
+      subject: `${label} Confirmation - ${number}`,
+      html: htmlBody
     });
 
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: `AALS Orders <${fromEmail}>`,
-        to: [adminEmail],
-        subject: `New Order - ${order.order_number} from ${userEmail}`,
+    const adminRecipients = [adminEmail, ...extraAdmins].filter(Boolean).filter(isValidEmail);
+    let adminResult = null;
+    if (adminRecipients.length) {
+      adminResult = await sendResendEmailV18({
+        fromEmail,
+        to: adminRecipients,
+        subject: `New ${label} - ${number} from ${userEmail}`,
         html: htmlBody
-      })
-    });
-
-    const data = await resCustomer.json();
-    if (data.id) {
-      res.json({ success: true, id: data.id });
-    } else {
-      res.status(400).json({ success: false, error: data.message || 'Failed to send' });
+      });
     }
+
+    res.json({
+      success: true,
+      customer_email_id: customerResult.id,
+      admin_email_id: adminResult?.id || null,
+      number,
+      type: label
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('Catalog confirmation email error:', err);
+    res.status(500).json({ success: false, error: err.message || String(err) });
   }
 });
 
+// Backward-compatible alias for older Catalog versions.
+app.post('/api/send-order-email', async (req, res) => {
+  try {
+    const verifiedUser = await verifyCatalogUser(req);
+    const record = req.body?.record || req.body?.order;
+    if (!record) return res.status(400).json({ success: false, error: 'Missing order.' });
+
+    const userEmail = String(record.user_email || req.body?.userEmail || verifiedUser.email || '').trim().toLowerCase();
+    record.user_email = record.user_email || userEmail;
+
+    const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+    const adminEmail = process.env.ADMIN_EMAIL || 'orders2@aalsusa.com';
+    const number = catalogRecordNumberV18(record, 'order');
+    const htmlBody = catalogConfirmationHtmlV18(record, 'order', userEmail);
+
+    const customerResult = await sendResendEmailV18({
+      fromEmail,
+      to: [userEmail],
+      subject: `Order Request Confirmation - ${number}`,
+      html: htmlBody
+    });
+
+    if (isValidEmail(adminEmail)) {
+      await sendResendEmailV18({
+        fromEmail,
+        to: [adminEmail],
+        subject: `New Order Request - ${number} from ${userEmail}`,
+        html: htmlBody
+      });
+    }
+
+    res.json({ success: true, id: customerResult.id, number });
+  } catch (err) {
+    console.error('Order email alias error:', err);
+    res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+});
+
+
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v17 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v19 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
