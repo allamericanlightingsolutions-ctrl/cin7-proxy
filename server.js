@@ -1239,11 +1239,14 @@ function cin7OrderDateForSyncV17(order) {
   return Number.isFinite(d.getTime()) ? d : null;
 }
 
-function filterCin7OrdersByDateRangeV17(orders, startDate, endDateExclusive) {
+function filterCin7OrdersByDateRangeV17(orders, startDate, endDateExclusive = null) {
   return (orders || []).filter(order => {
     const d = cin7OrderDateForSyncV17(order);
     if (!d) return false;
-    return d >= startDate && d < endDateExclusive;
+    if (d < startDate) return false;
+    // v23: open-ended sync. If no explicit end date is provided, do not cap future/current records.
+    if (endDateExclusive && d >= endDateExclusive) return false;
+    return true;
   });
 }
 
@@ -1257,24 +1260,22 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const rows = req.body?.rows || req.query.rows || 175;
     const pages = req.body?.pages || req.query.pages || 2;
 
-    // v17 date window:
-    // Default: June 1 through August 1 of the current year,
-    // which imports June and July only.
-    // You can override in Render with:
+    // v23 date window:
+    // Default: Start at 2026-06-01 and do NOT use a fixed end date.
+    // This means every sync imports new Cin7 orders from June 1, 2026 forward.
+    // Existing Operations records are preserved by ignore-duplicates below.
+    // Optional override:
     // CIN7_SYNC_START_DATE=2026-06-01
-    // CIN7_SYNC_END_DATE=2026-08-01
-    // End date is exclusive, so 2026-08-01 means through July 31.
-    const currentYearV17 = new Date().getFullYear();
-    const defaultStartV17 = new Date(`${currentYearV17}-06-01T00:00:00`);
-    const defaultEndV17 = new Date(`${currentYearV17}-08-01T00:00:00`);
+    // Optional temporary cap only if explicitly needed:
+    // CIN7_SYNC_END_DATE=YYYY-MM-DD
+    const defaultStartV17 = new Date('2026-06-01T00:00:00');
     const startDateV17 = parseCin7SyncDateV17(
       req.body?.start_date || req.query.start_date || process.env.CIN7_SYNC_START_DATE,
       defaultStartV17
     );
-    const endDateV17 = parseCin7SyncDateV17(
-      req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE,
-      defaultEndV17
-    );
+
+    const explicitEndV23 = req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE || null;
+    const endDateV17 = explicitEndV23 ? parseCin7SyncDateV17(explicitEndV23, null) : null;
 
     const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, pages });
     const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
@@ -1328,14 +1329,15 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       imported: insertedRows.length,
       skipped_existing: Math.max(0, normalized.length - insertedRows.length),
       source: 'cin7_sales_orders',
-      sync_mode: 'new_records_only_june_july_preserve_operations_changes',
+      sync_mode: 'new_records_only_open_ended_from_2026_06_01_preserve_operations_changes',
       date_filter: {
         start_date: startDateV17.toISOString().slice(0, 10),
-        end_date_exclusive: endDateV17.toISOString().slice(0, 10)
+        end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
+        end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
       },
       rows,
       pages,
-      message: 'Cin7 Sync imported only new records inside the selected date range. Existing Operations records were preserved and not overwritten.',
+      message: 'Cin7 Sync imported only new records from 2026-06-01 forward. Existing Operations records were preserved and not overwritten.',
       orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
@@ -1705,19 +1707,22 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v21 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v23 running ✅', timestamp: new Date().toISOString() });
 });
 
 
 
 app.get('/api/cin7-sync-window', (req, res) => {
+  const explicitEnd = process.env.CIN7_SYNC_END_DATE || null;
   res.json({
     success: true,
     start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
-    end: process.env.CIN7_SYNC_END_DATE || tomorrowIsoDateV21(),
-    note: 'End date is exclusive. If no CIN7_SYNC_END_DATE is set, v21 uses tomorrow automatically.'
+    end: explicitEnd,
+    end_mode: explicitEnd ? 'explicit_end_date_from_env' : 'open_ended_no_fixed_limit',
+    note: 'v23 syncs Cin7 orders from 2026-06-01 forward. No fixed end date is used unless CIN7_SYNC_END_DATE is explicitly set.'
   });
 });
+
 
 
 app.listen(PORT, () => {
