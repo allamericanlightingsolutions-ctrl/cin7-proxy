@@ -5,6 +5,13 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function tomorrowIsoDateV21(){
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+
 const CIN7_USERNAME = process.env.CIN7_USERNAME;
 const CIN7_API_KEY = process.env.CIN7_API_KEY;
 const CIN7_BASE_URL = (process.env.CIN7_BASE_URL || 'https://api.cin7.com/api/v1').replace(/\/$/, '');
@@ -1698,8 +1705,20 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v20 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v21 running ✅', timestamp: new Date().toISOString() });
 });
+
+
+
+app.get('/api/cin7-sync-window', (req, res) => {
+  res.json({
+    success: true,
+    start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
+    end: process.env.CIN7_SYNC_END_DATE || tomorrowIsoDateV21(),
+    note: 'End date is exclusive. If no CIN7_SYNC_END_DATE is set, v21 uses tomorrow automatically.'
+  });
+});
+
 
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
