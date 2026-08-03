@@ -1346,6 +1346,73 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
 });
 
 
+
+
+// ─── v20 Send catalog-created order to Cin7 without requiring admin ──────────
+// This endpoint is called by the Catalog right after saving the order in Supabase.
+// It verifies the logged-in Catalog user, then creates a Draft/New Sales Order in Cin7.
+// Quotes and Special Product Requests should NOT use this endpoint.
+app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
+  try {
+    const catalogUser = await verifyCatalogUser(req);
+    const { order } = req.body || {};
+
+    if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    if (order.quote_number && !order.order_number) {
+      return res.status(400).json({ success: false, error: 'Only catalog orders can be sent to Cin7.' });
+    }
+    if (order.cin7_order_id) {
+      return res.status(400).json({ success: false, error: 'This order already has a Cin7 order id.' });
+    }
+
+    const orderEmail = String(order.user_email || order.created_by_email || '').trim().toLowerCase();
+    const tokenEmail = String(catalogUser.email || '').trim().toLowerCase();
+
+    // User can send only their own catalog order unless the record has no email.
+    if (orderEmail && tokenEmail && orderEmail !== tokenEmail) {
+      return res.status(403).json({ success: false, error: 'You can only send your own catalog orders to Cin7.' });
+    }
+
+    const orderForCin7 = {
+      ...order,
+      status: order.status || 'pending_approval',
+      user_email: orderEmail || tokenEmail
+    };
+
+    const salesOrder = buildCin7SalesOrder(orderForCin7, catalogUser);
+    const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
+
+    const cin7Response = await cin7Fetch(endpoint, {
+      method: 'POST',
+      body: JSON.stringify([salesOrder])
+    });
+
+    const result = Array.isArray(cin7Response) ? cin7Response[0] : cin7Response;
+    const success = result?.Success === true || result?.success === true || !!result?.Id || !!result?.id;
+
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: result?.Errors?.join('; ') || result?.errors?.join('; ') || result?.Message || result?.message || 'Cin7 rejected the sales order.',
+        cin7Response,
+        payload: salesOrder
+      });
+    }
+
+    res.json({
+      success: true,
+      cin7_order_id: result.Id || result.id,
+      cin7_order_number: result.Code || result.code || result.Reference || result.reference || result.Ref || result.ref || '',
+      cin7_status: 'sent_to_cin7_from_catalog',
+      cin7Response,
+      payload: salesOrder
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // ─── Send approved catalog order to Cin7 as Draft/New Sales Order ─────────────
 
 app.post('/api/send-order-to-cin7', async (req, res) => {
@@ -1631,7 +1698,7 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v19 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v20 running ✅', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
