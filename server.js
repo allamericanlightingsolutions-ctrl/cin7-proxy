@@ -1707,7 +1707,7 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v23 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v24 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -1719,11 +1719,172 @@ app.get('/api/cin7-sync-window', (req, res) => {
     start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
     end: explicitEnd,
     end_mode: explicitEnd ? 'explicit_end_date_from_env' : 'open_ended_no_fixed_limit',
-    note: 'v23 syncs Cin7 orders from 2026-06-01 forward. No fixed end date is used unless CIN7_SYNC_END_DATE is explicitly set.'
+    note: 'v24 syncs Cin7 orders from 2026-06-01 forward. Manual single-order import by Ref is also available for exceptions.'
   });
 });
 
 
+
+
+
+// ─── v24 Manual single Cin7 Sales Order import by Ref ───────────────────────
+// Use this for one-off exceptions, such as a May order needed in Operations,
+// without widening the normal June 1+ sync window.
+function normalizeRefLooseV24(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/^cin7\s*ref\s*#?/i, '')
+    .replace(/^ref\s*#?/i, '');
+}
+
+function cin7OrderMatchesRefV24(order, requestedRef) {
+  const target = normalizeRefLooseV24(requestedRef);
+  if (!target) return false;
+
+  const values = [
+    cin7RefValueV14(order),
+    pickFirst(order, ['Ref','ref','SalesOrderRef','salesOrderRef','SalesOrderReference','salesOrderReference']),
+    pickFirst(order, ['Reference','reference','CustomerReference','customerReference']),
+    pickFirst(order, ['CustomerOrderNo','customerOrderNo','PONumber','poNumber','PO']),
+    pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']),
+    pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId','OrderId','orderId'])
+  ].map(normalizeRefLooseV24).filter(Boolean);
+
+  return values.includes(target);
+}
+
+function escapeCin7WhereValueV24(value) {
+  return String(value || '').trim().replace(/'/g, "''");
+}
+
+async function fetchCin7SalesOrderByRefV24(ref, { rows = 250, pages = 80 } = {}) {
+  const cleanRef = cleanText(ref, 120);
+  if (!cleanRef) throw new Error('Missing Cin7 Ref.');
+
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
+  const safePages = Math.min(Math.max(parseInt(pages, 10) || 80, 1), 150);
+  const escaped = escapeCin7WhereValueV24(cleanRef);
+
+  // Try exact server-side filters first. If Cin7 accepts the where clause,
+  // this avoids scanning many pages for older orders.
+  const whereFields = [
+    'Ref', 'Reference', 'SalesOrderRef', 'CustomerReference',
+    'CustomerOrderNo', 'PONumber', 'Code', 'OrderNumber', 'Number'
+  ];
+
+  for (const field of whereFields) {
+    try {
+      const where = encodeURIComponent(`${field}='${escaped}'`);
+      const url = `${CIN7_BASE_URL}/SalesOrders?rows=20&page=1&where=${where}`;
+      const data = await cin7Fetch(url);
+      const items = normalizeCin7OrderList(data);
+      const exact = items.find(order => cin7OrderMatchesRefV24(order, cleanRef));
+      if (exact) return { order: exact, method: `where:${field}`, scanned_pages: 1, scanned_records: items.length };
+    } catch (err) {
+      console.warn(`Cin7 single-ref where search failed for ${field}:`, err.message);
+    }
+    await sleep(120);
+  }
+
+  // Fallback: scan pages, useful if the account's SalesOrders endpoint does not
+  // support a specific field in where filters.
+  let scannedRecords = 0;
+  for (let page = 1; page <= safePages; page++) {
+    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
+    const data = await cin7Fetch(url);
+    const items = normalizeCin7OrderList(data);
+    scannedRecords += items.length;
+
+    const found = items.find(order => cin7OrderMatchesRefV24(order, cleanRef));
+    if (found) return { order: found, method: 'page_scan', scanned_pages: page, scanned_records: scannedRecords };
+
+    if (!items.length || items.length < safeRows) break;
+    await sleep(250);
+  }
+
+  return { order: null, method: 'not_found', scanned_pages: safePages, scanned_records: scannedRecords };
+}
+
+app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+
+    const ref = cleanText(req.body?.ref || req.body?.reference || req.query.ref || req.query.reference, 120);
+    if (!ref) return res.status(400).json({ success: false, error: 'Missing Cin7 Ref. Example: B16997-3' });
+
+    const rows = req.body?.rows || req.query.rows || 250;
+    const pages = req.body?.pages || req.query.pages || 80;
+    const found = await fetchCin7SalesOrderByRefV24(ref, { rows, pages });
+
+    if (!found.order) {
+      return res.status(404).json({
+        success: false,
+        error: `Cin7 Sales Order with Ref ${ref} was not found.`,
+        ref,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records
+      });
+    }
+
+    const normalized = normalizeCin7SalesOrderForOperations(found.order, adminUser);
+    normalized.notes = [
+      normalized.notes || '',
+      `Manual single-order import by Ref: ${ref}`,
+      `Imported by: ${adminUser.email}`
+    ].filter(Boolean).join('\n');
+
+    const imported = await supabaseRest(
+      'orders?on_conflict=external_source,external_id',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+        body: JSON.stringify([normalized])
+      },
+      token
+    );
+
+    const insertedRows = Array.isArray(imported) ? imported : [];
+    const inserted = insertedRows[0] || null;
+
+    res.json({
+      success: true,
+      ref,
+      found: true,
+      imported: insertedRows.length,
+      skipped_existing: insertedRows.length ? 0 : 1,
+      search_method: found.method,
+      scanned_pages: found.scanned_pages,
+      scanned_records: found.scanned_records,
+      message: insertedRows.length
+        ? `Cin7 Ref ${ref} was imported into Operations.`
+        : `Cin7 Ref ${ref} already exists in Operations. No duplicate was created.`,
+      order: inserted ? {
+        id: inserted.id,
+        order_number: inserted.order_number,
+        external_id: inserted.external_id,
+        cin7_order_id: inserted.cin7_order_id,
+        cin7_order_number: inserted.cin7_order_number,
+        cin7_reference: inserted.cin7_reference,
+        reference: inserted.reference,
+        status: inserted.status
+      } : {
+        order_number: normalized.order_number,
+        external_id: normalized.external_id,
+        cin7_order_id: normalized.cin7_order_id,
+        cin7_order_number: normalized.cin7_order_number,
+        cin7_reference: normalized.cin7_reference,
+        reference: normalized.reference,
+        status: normalized.status
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Proxy server running on port ${PORT}`);
