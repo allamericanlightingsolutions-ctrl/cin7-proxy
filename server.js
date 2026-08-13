@@ -1203,12 +1203,15 @@ function sortCin7SalesOrdersLikeCin7V14(items) {
   });
 }
 
-async function fetchCin7SalesOrdersForImport({ rows = 175, pages = 2 } = {}) {
-  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 100, 1), 250);
-  const safePages = Math.min(Math.max(parseInt(pages, 10) || 2, 1), 20);
+async function fetchCin7SalesOrdersForImport({ rows = 250, startDate = null } = {}) {
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
   const all = [];
+  let page = 1;
 
-  for (let page = 1; page <= safePages; page++) {
+  // Read every page required to cover the open-ended date window. There is no
+  // fixed record/page cap: stop at the end of Cin7 results or after reaching
+  // a full page whose dated records are all older than the start date.
+  while (true) {
     const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
     const data = await cin7Fetch(url);
     const items = normalizeCin7OrderList(data);
@@ -1216,6 +1219,13 @@ async function fetchCin7SalesOrdersForImport({ rows = 175, pages = 2 } = {}) {
     if (!items.length) break;
     all.push(...items);
     if (items.length < safeRows) break;
+
+    if (startDate) {
+      const dated = items.map(cin7OrderDateForSyncV17).filter(Boolean);
+      if (dated.length && dated.every(d => d < startDate)) break;
+    }
+
+    page++;
     await sleep(350);
   }
 
@@ -1257,8 +1267,7 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const adminUser = await verifyAdmin(req);
     const token = getAuthToken(req);
 
-    const rows = req.body?.rows || req.query.rows || 175;
-    const pages = req.body?.pages || req.query.pages || 2;
+    const rows = req.body?.rows || req.query.rows || 250;
 
     // v23 date window:
     // Default: Start at 2026-06-01 and do NOT use a fixed end date.
@@ -1277,7 +1286,7 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const explicitEndV23 = req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE || null;
     const endDateV17 = explicitEndV23 ? parseCin7SyncDateV17(explicitEndV23, null) : null;
 
-    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, pages });
+    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, startDate: startDateV17 });
     const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
 
     const normalized = cin7Orders
@@ -1297,8 +1306,7 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         success: true,
         imported: 0,
         message: 'No Cin7 sales orders found to import.',
-        rows,
-        pages
+        rows
       });
     }
 
@@ -1329,14 +1337,13 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       imported: insertedRows.length,
       skipped_existing: Math.max(0, normalized.length - insertedRows.length),
       source: 'cin7_sales_orders',
-      sync_mode: 'new_records_only_open_ended_from_2026_06_01_preserve_operations_changes',
+      sync_mode: 'all_pages_open_ended_from_2026_06_01_preserve_operations_changes',
       date_filter: {
         start_date: startDateV17.toISOString().slice(0, 10),
         end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
         end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
       },
       rows,
-      pages,
       message: 'Cin7 Sync imported only new records from 2026-06-01 forward. Existing Operations records were preserved and not overwritten.',
       orders: insertedRows.map(o => ({
         id: o.id,
@@ -1917,13 +1924,12 @@ app.listen(PORT, () => {
 
 
 // --- v14 Cin7 sync behavior note ---
-// The sync now requests a safer limited batch by default (175 x 2 pages) and sorts Cin7 imports
+// The sync paginates until it covers every Cin7 order from 2026-06-01 forward and sorts imports
 // by Created Date and Ref so Operations visually matches the Cin7 Sales Orders list more closely.
 
 
-// --- v15 Cin7 sync limit note ---
-// Sync default is intentionally limited to approximately 350 records
-// using 175 rows x 2 pages to avoid Supabase statement timeouts.
+// --- v25 Cin7 sync pagination note ---
+// Sync has no fixed 350-record cap. It reads all pages needed to cover the configured start date.
 
 
 // --- v16 Cin7 Sync Preserve Operations Changes ---
