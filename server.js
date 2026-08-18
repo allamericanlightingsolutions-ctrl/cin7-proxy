@@ -721,52 +721,85 @@ app.get('/api/catalog-code-index', async (req, res) => {
   }
 });
 
-app.get('/api/stock', async (req, res) => {
-  try {
-    const { category, branch } = req.query;
-    let params = '';
-    if (category) params = `&where=Category%3D'${encodeURIComponent(category)}'`;
-    const stockData = await fetchAllPages('products/stocklevels', params);
+function normalizeStockUnitsV26(stockUnits) {
+  const bySku = new Map();
 
-    let result = stockData;
-    if (branch) {
-      result = stockData.map(item => {
-        const filtered = { ...item };
-        if (item.ProductOptions) {
-          filtered.ProductOptions = item.ProductOptions.map(opt => ({
-            ...opt,
-            StockLevels: (opt.StockLevels || []).filter(sl =>
-              sl.Name?.toLowerCase().includes(branch.toLowerCase())
-            )
-          }));
-        }
-        return filtered;
+  (Array.isArray(stockUnits) ? stockUnits : []).forEach(unit => {
+    const sku = String(unit.code || unit.Code || unit.sku || unit.SKU || '').trim();
+    if (!sku) return;
+
+    const key = sku.toUpperCase();
+    if (!bySku.has(key)) {
+      bySku.set(key, {
+        id: unit.productOptionId || unit.ProductOptionId || unit.productId || unit.ProductId || null,
+        productId: unit.productId || unit.ProductId || null,
+        productOptionId: unit.productOptionId || unit.ProductOptionId || null,
+        sku,
+        styleCode: unit.styleCode || unit.StyleCode || '',
+        barcode: unit.barcode || unit.Barcode || '',
+        name: unit.productName || unit.ProductName || '',
+        availableQty: 0,
+        stockOnHandQty: 0,
+        openSalesQty: 0,
+        incomingQty: 0,
+        virtualQty: 0,
+        holdingQty: 0,
+        branches: new Map(),
+        lastUpdated: unit.modifiedDate || unit.ModifiedDate || null
       });
     }
 
-    const normalized = result.map(item => {
-      const options = item.ProductOptions || [];
-      let totalAvailable = 0;
-      const branchBreakdown = {};
-      options.forEach(opt => {
-        (opt.StockLevels || []).forEach(sl => {
-          const qty = sl.Available ?? sl.OnHand ?? 0;
-          totalAvailable += qty;
-          if (!branchBreakdown[sl.Name]) branchBreakdown[sl.Name] = 0;
-          branchBreakdown[sl.Name] += qty;
-        });
-      });
+    const record = bySku.get(key);
+    const available = Number(unit.available ?? unit.Available ?? 0) || 0;
+    const onHand = Number(unit.stockOnHand ?? unit.StockOnHand ?? 0) || 0;
+    const openSales = Number(unit.openSales ?? unit.OpenSales ?? 0) || 0;
+    const incoming = Number(unit.incoming ?? unit.Incoming ?? 0) || 0;
+    const virtualQty = Number(unit.virtual ?? unit.Virtual ?? 0) || 0;
+    const holding = Number(unit.holding ?? unit.Holding ?? 0) || 0;
+    const branch = String(unit.branchName || unit.BranchName || 'Unknown').trim() || 'Unknown';
 
-      return {
-        id: item.ID,
-        sku: item.SKU,
-        name: item.Name,
-        category: item.Category,
-        availableQty: totalAvailable,
-        branchStock: Object.entries(branchBreakdown).map(([name, qty]) => ({ branch: name, qty })),
-        lastUpdated: new Date().toISOString()
-      };
-    });
+    record.availableQty += available;
+    record.stockOnHandQty += onHand;
+    record.openSalesQty += openSales;
+    record.incomingQty += incoming;
+    record.virtualQty += virtualQty;
+    record.holdingQty += holding;
+    if (!record.name) record.name = unit.productName || unit.ProductName || '';
+    if (!record.barcode) record.barcode = unit.barcode || unit.Barcode || '';
+    if (!record.styleCode) record.styleCode = unit.styleCode || unit.StyleCode || '';
+
+    if (!record.branches.has(branch)) {
+      record.branches.set(branch, { branch, qty: 0, stockOnHand: 0, openSales: 0, incoming: 0 });
+    }
+    const branchRecord = record.branches.get(branch);
+    branchRecord.qty += available;
+    branchRecord.stockOnHand += onHand;
+    branchRecord.openSales += openSales;
+    branchRecord.incoming += incoming;
+
+    const modified = unit.modifiedDate || unit.ModifiedDate;
+    if (modified && (!record.lastUpdated || new Date(modified) > new Date(record.lastUpdated))) {
+      record.lastUpdated = modified;
+    }
+  });
+
+  return [...bySku.values()].map(record => ({
+    ...record,
+    branchStock: [...record.branches.values()],
+    branches: undefined,
+    lastUpdated: record.lastUpdated || new Date().toISOString()
+  }));
+}
+
+app.get('/api/stock', async (req, res) => {
+  try {
+    const { branch } = req.query;
+    const stockData = await fetchAllPagesSafe('Stock');
+    const branchTerm = String(branch || '').trim().toLowerCase();
+    const filtered = branchTerm
+      ? stockData.filter(unit => String(unit.branchName || unit.BranchName || '').toLowerCase().includes(branchTerm))
+      : stockData;
+    const normalized = normalizeStockUnitsV26(filtered);
 
     res.json({ success: true, count: normalized.length, stock: normalized });
   } catch (err) {
@@ -776,39 +809,12 @@ app.get('/api/stock', async (req, res) => {
 
 app.get('/api/stock/:sku', async (req, res) => {
   try {
-    const { sku } = req.params;
-    const encodedSku = encodeURIComponent(`'${sku}'`);
-    const url = `${CIN7_BASE_URL}/products/stocklevels?where=SKU%3D${encodedSku}`;
-    const data = await cin7Fetch(url);
-
-    const items = Array.isArray(data) ? data : data.StockList || data.Stock || data.Products || [];
-    if (!items || items.length === 0) {
-      return res.json({ success: true, sku, availableQty: 0, branchStock: [] });
-    }
-
-    const item = items[0];
-    const options = item.ProductOptions || [];
-    let totalAvailable = 0;
-    const branchBreakdown = {};
-
-    options.forEach(opt => {
-      (opt.StockLevels || []).forEach(sl => {
-        const qty = sl.Available ?? sl.OnHand ?? 0;
-        totalAvailable += qty;
-        if (!branchBreakdown[sl.Name]) branchBreakdown[sl.Name] = 0;
-        branchBreakdown[sl.Name] += qty;
-      });
-    });
-
-    res.json({
-      success: true,
-      sku,
-      name: item.Name,
-      category: item.Category,
-      availableQty: totalAvailable,
-      branchStock: Object.entries(branchBreakdown).map(([name, qty]) => ({ branch: name, qty })),
-      lastUpdated: new Date().toISOString()
-    });
+    const sku = String(req.params.sku || '').trim();
+    const where = `where=${encodeURIComponent(`Code='${sku.replace(/'/g, "''")}'`)}`;
+    const items = await fetchAllPagesSafe('Stock', where);
+    const normalized = normalizeStockUnitsV26(items);
+    if (!normalized.length) return res.json({ success: true, sku, availableQty: 0, stockOnHandQty: 0, openSalesQty: 0, incomingQty: 0, branchStock: [] });
+    res.json({ success: true, ...normalized[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -827,42 +833,26 @@ app.get('/api/catalog', async (req, res) => {
     let stockError = null;
     if (includeStock !== '0') {
       try {
-        stockData = await fetchAllPagesSafe('products/stocklevels', params);
+        stockData = await fetchAllPagesSafe('Stock');
       } catch (stockErr) {
         stockError = stockErr.message;
       }
     }
 
     const stockMap = {};
-    stockData.forEach(item => {
-      const options = item.ProductOptions || [];
-      let total = 0;
-      const branches = {};
-      options.forEach(opt => {
-        (opt.StockLevels || []).forEach(sl => {
-          const qty = sl.Available ?? sl.OnHand ?? 0;
-          total += qty;
-          const branchName = sl.Name || sl.Branch || 'Unknown';
-          if (!branches[branchName]) branches[branchName] = 0;
-          branches[branchName] += qty;
-        });
-      });
-
-      const sku = item.SKU || item.Code || item.ProductCode;
-      if (sku) {
-        stockMap[sku] = {
-          availableQty: total,
-          branchStock: Object.entries(branches).map(([name, qty]) => ({ branch: name, qty }))
-        };
-      }
+    normalizeStockUnitsV26(stockData).forEach(item => {
+      stockMap[String(item.sku || '').toUpperCase()] = item;
     });
 
     const enriched = products.map(p => {
       const normalized = normalizeCin7Product(p);
-      const stock = stockMap[normalized.sku] || stockMap[normalized.code] || {};
+      const stock = stockMap[String(normalized.sku || '').toUpperCase()] || stockMap[String(normalized.code || '').toUpperCase()] || {};
       return {
         ...normalized,
         availableQty: stock.availableQty ?? null,
+        stockOnHandQty: stock.stockOnHandQty ?? null,
+        openSalesQty: stock.openSalesQty ?? null,
+        incomingQty: stock.incomingQty ?? null,
         branchStock: stock.branchStock ?? [],
         stockLastUpdated: new Date().toISOString(),
         raw: raw === '1' ? p : undefined
