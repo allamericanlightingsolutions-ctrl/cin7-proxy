@@ -1027,6 +1027,32 @@ function normalizeCin7LineItems(order) {
 }
 
 
+// v25: Cin7 exposes two different concepts on Sales Orders:
+// - Status: the document-level state (for example, Void)
+// - Stage: the operational stage (for example, New)
+// A void document must always win over its stage so it cannot be re-imported
+// into Operations as active work.
+function cin7DocumentStatusV25(order) {
+  return cleanText(pickFirst(order, [
+    'Status', 'status', 'OrderStatus', 'orderStatus',
+    'SalesOrderStatus', 'salesOrderStatus', 'Cin7Status', 'cin7Status'
+  ]), 100);
+}
+
+function cin7StageV25(order) {
+  return cleanText(pickFirst(order, ['Stage', 'stage']), 100);
+}
+
+function cin7IsVoidOrderV25(order) {
+  const explicitVoid = pickFirst(order, ['IsVoid', 'isVoid', 'Void', 'void']);
+  if (explicitVoid === true || explicitVoid === 1) return true;
+  if (/^(true|1|yes)$/i.test(String(explicitVoid || '').trim())) return true;
+
+  const documentStatus = cin7DocumentStatusV25(order);
+  return /^(void|voided)$/i.test(documentStatus);
+}
+
+
 function normalizeCin7SalesOrderForOperations(order, adminUser) {
   const id = String(pickFirst(order, [
     'Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId', 'OrderId', 'orderId'
@@ -1044,11 +1070,12 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO'
   ]), 160);
 
-  const stage = cleanText(pickFirst(order, [
-    'Stage', 'stage', 'Status', 'status', 'OrderStatus', 'orderStatus'
-  ]), 100);
-
-  const status = stage ? stage.toLowerCase().replace(/\s+/g, '_') : 'imported_from_cin7';
+  const documentStatus = cin7DocumentStatusV25(order);
+  const stage = cin7StageV25(order);
+  const operationalState = stage || documentStatus;
+  const status = cin7IsVoidOrderV25(order)
+    ? 'cancelled'
+    : (operationalState ? operationalState.toLowerCase().replace(/\s+/g, '_') : 'imported_from_cin7');
 
   const createdAt = pickFirst(order, [
     'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date',
@@ -1129,7 +1156,8 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
       memberName ? `Member/Sales rep: ${memberName}` : '',
       createdBy ? `Cin7 created by: ${createdBy}` : '',
       reference ? `Reference: ${reference}` : '',
-      stage ? `Cin7 status/stage: ${stage}` : ''
+      documentStatus ? `Cin7 document status: ${documentStatus}` : '',
+      stage ? `Cin7 stage: ${stage}` : ''
     ].filter(Boolean).join('\n'),
     subtotal: null,
     tax: null,
@@ -1143,7 +1171,7 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     cin7_order_id: id,
     cin7_order_number: code || displayNumber,
     cin7_ref_number: reference || displayNumber,
-    cin7_status: status,
+    cin7_status: documentStatus || status,
     cin7_stage: stage,
     cin7_reference: reference || displayNumber,
     cin7_customer_name: customerName,
@@ -1250,6 +1278,100 @@ function filterCin7OrdersByDateRangeV17(orders, startDate, endDateExclusive = nu
   });
 }
 
+function cin7ReferenceKeysV25(order) {
+  const preferredRef = cin7RefValueV14(order);
+  const fallbackCode = cleanText(pickFirst(order, [
+    'Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number',
+    'SalesOrderNumber', 'salesOrderNumber'
+  ]), 160);
+
+  return [...new Set([preferredRef || fallbackCode]
+    .map(normalizeRefLooseV24)
+    .filter(Boolean))];
+}
+
+function operationsReferenceKeysV25(order) {
+  return [...new Set([
+    order?.order_number,
+    order?.reference,
+    order?.ref,
+    order?.external_number,
+    order?.cin7_ref_number,
+    order?.cin7_reference,
+    order?.cin7_order_number
+  ].map(normalizeRefLooseV24).filter(Boolean))];
+}
+
+function operationsRowsMatchingCin7V25(existingRows, cin7Order) {
+  const refKeys = new Set(cin7ReferenceKeysV25(cin7Order));
+  const cin7Id = String(pickFirst(cin7Order, [
+    'Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId', 'OrderId', 'orderId'
+  ]) || '').trim();
+
+  return (existingRows || []).filter(row => {
+    const sameImportedId = cin7Id
+      && String(row?.external_source || '') === 'cin7_sales_orders'
+      && String(row?.external_id || '').trim() === cin7Id;
+    if (sameImportedId) return true;
+    return operationsReferenceKeysV25(row).some(key => refKeys.has(key));
+  });
+}
+
+async function fetchOperationsOrdersV25(token) {
+  const pageSize = 1000;
+  const allRows = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await supabaseRest(
+      `orders?select=*&limit=${pageSize}&offset=${offset}`,
+      { method: 'GET' },
+      token
+    );
+    const rows = Array.isArray(page) ? page : [];
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return allRows;
+}
+
+async function patchOperationsOrderCancelledV25(row, token) {
+  if (!row?.id) return 0;
+  const updated = await supabaseRest(
+    `orders?id=eq.${encodeURIComponent(row.id)}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+    },
+    token
+  );
+  return Array.isArray(updated) ? updated.length : 0;
+}
+
+async function reconcileVoidCin7OrdersV25(voidOrders, existingRows, token) {
+  const matchesById = new Map();
+  for (const cin7Order of (voidOrders || [])) {
+    for (const row of operationsRowsMatchingCin7V25(existingRows, cin7Order)) {
+      if (row?.id && String(row.status || '').toLowerCase() !== 'cancelled') {
+        matchesById.set(String(row.id), row);
+      }
+    }
+  }
+
+  const rows = [...matchesById.values()];
+  let cancelled = 0;
+  for (let index = 0; index < rows.length; index += 8) {
+    const batch = rows.slice(index, index + 8);
+    const results = await Promise.all(batch.map(row => patchOperationsOrderCancelledV25(row, token)));
+    cancelled += results.reduce((sum, count) => sum + count, 0);
+  }
+  return cancelled;
+}
+
 // ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
 
 app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
@@ -1279,7 +1401,26 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, startDate: startDateV17 });
     const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
 
-    const normalized = cin7Orders
+    const voidOrdersV25 = cin7Orders.filter(cin7IsVoidOrderV25);
+    const activeCin7OrdersV25 = cin7Orders.filter(order => !cin7IsVoidOrderV25(order));
+    const existingOperationsRowsV25 = await fetchOperationsOrdersV25(token);
+    const cancelledFromVoidV25 = await reconcileVoidCin7OrdersV25(
+      voidOrdersV25,
+      existingOperationsRowsV25,
+      token
+    );
+
+    // A Catalog-created request and its later Cin7 Sales Order share the same
+    // business reference but not necessarily the same external ID. Compare the
+    // normalized reference before inserting to prevent a second Operations row.
+    let matchedExistingByReferenceV25 = 0;
+    const newActiveCin7OrdersV25 = activeCin7OrdersV25.filter(order => {
+      const matches = operationsRowsMatchingCin7V25(existingOperationsRowsV25, order);
+      if (matches.length) matchedExistingByReferenceV25 += 1;
+      return matches.length === 0;
+    });
+
+    const normalized = newActiveCin7OrdersV25
       .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
       .filter(order => order.external_id || order.external_number)
       .sort((a, b) => {
@@ -1295,7 +1436,13 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       return res.json({
         success: true,
         imported: 0,
-        message: 'No Cin7 sales orders found to import.',
+        fetched: cin7Orders.length,
+        skipped_void: voidOrdersV25.length,
+        cancelled_from_void: cancelledFromVoidV25,
+        matched_existing_by_reference: matchedExistingByReferenceV25,
+        message: voidOrdersV25.length
+          ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
+          : 'No new Cin7 sales orders found to import.',
         rows
       });
     }
@@ -1325,16 +1472,19 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       fetched: cin7Orders.length,
       fetched_before_date_filter: typeof cin7OrdersAll !== 'undefined' ? cin7OrdersAll.length : cin7Orders.length,
       imported: insertedRows.length,
-      skipped_existing: Math.max(0, normalized.length - insertedRows.length),
+      skipped_existing: Math.max(0, normalized.length - insertedRows.length) + matchedExistingByReferenceV25,
+      matched_existing_by_reference: matchedExistingByReferenceV25,
+      skipped_void: voidOrdersV25.length,
+      cancelled_from_void: cancelledFromVoidV25,
       source: 'cin7_sales_orders',
-      sync_mode: 'all_pages_open_ended_from_2026_06_01_preserve_operations_changes',
+      sync_mode: 'v25_reference_dedupe_void_reconciliation_preserve_operations_changes',
       date_filter: {
         start_date: startDateV17.toISOString().slice(0, 10),
         end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
         end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
       },
       rows,
-      message: 'Cin7 Sync imported only new records from 2026-06-01 forward. Existing Operations records were preserved and not overwritten.',
+      message: 'Cin7 Sync imported only new active references. Void orders were excluded and matching Operations records were cancelled.',
       orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
@@ -1704,7 +1854,7 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v24 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v25 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -1716,7 +1866,7 @@ app.get('/api/cin7-sync-window', (req, res) => {
     start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
     end: explicitEnd,
     end_mode: explicitEnd ? 'explicit_end_date_from_env' : 'open_ended_no_fixed_limit',
-    note: 'v24 syncs Cin7 orders from 2026-06-01 forward. Manual single-order import by Ref is also available for exceptions.'
+    note: 'v25 excludes Cin7 Void orders, cancels matching Operations rows, and deduplicates by normalized reference.'
   });
 });
 
@@ -1827,6 +1977,55 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
       });
     }
 
+    const existingOperationsRowsV25 = await fetchOperationsOrdersV25(token);
+    const existingMatchesV25 = operationsRowsMatchingCin7V25(existingOperationsRowsV25, found.order);
+
+    if (cin7IsVoidOrderV25(found.order)) {
+      const cancelledFromVoidV25 = await reconcileVoidCin7OrdersV25(
+        [found.order],
+        existingOperationsRowsV25,
+        token
+      );
+      return res.json({
+        success: true,
+        ref,
+        found: true,
+        imported: 0,
+        skipped_void: 1,
+        cancelled_from_void: cancelledFromVoidV25,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records,
+        message: `Cin7 Ref ${ref} is Void. It was not imported; matching Operations records were cancelled.`
+      });
+    }
+
+    if (existingMatchesV25.length) {
+      const existing = existingMatchesV25[0];
+      return res.json({
+        success: true,
+        ref,
+        found: true,
+        imported: 0,
+        skipped_existing: 1,
+        matched_existing_by_reference: 1,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records,
+        message: `Cin7 Ref ${ref} already exists in Operations under the same normalized reference. No duplicate was created.`,
+        order: {
+          id: existing.id,
+          order_number: existing.order_number,
+          external_id: existing.external_id,
+          cin7_order_id: existing.cin7_order_id,
+          cin7_order_number: existing.cin7_order_number,
+          cin7_reference: existing.cin7_reference,
+          reference: existing.reference,
+          status: existing.status
+        }
+      });
+    }
+
     const normalized = normalizeCin7SalesOrderForOperations(found.order, adminUser);
     normalized.notes = [
       normalized.notes || '',
@@ -1883,9 +2082,23 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Proxy server running on port ${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  cin7DocumentStatusV25,
+  cin7StageV25,
+  cin7IsVoidOrderV25,
+  normalizeCin7SalesOrderForOperations,
+  normalizeRefLooseV24,
+  cin7ReferenceKeysV25,
+  operationsReferenceKeysV25,
+  operationsRowsMatchingCin7V25
+};
 
 
 // --- v12 NOTE FOR CIN7 IMPORT ENDPOINT ---
