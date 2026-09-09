@@ -1,0 +1,2271 @@
+const express = require('express');
+const fetch = require('node-fetch');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+function tomorrowIsoDateV21(){
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+
+const CIN7_USERNAME = process.env.CIN7_USERNAME;
+const CIN7_API_KEY = process.env.CIN7_API_KEY;
+const CIN7_BASE_URL = (process.env.CIN7_BASE_URL || 'https://api.cin7.com/api/v1').replace(/\/$/, '');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'l.gonzalez@allamericanlightingsolutions.com').toLowerCase();
+
+
+// --- v12 Cin7 tracking/status extraction helpers ---
+function firstValueV12(obj, keys){
+  for(const k of keys){
+    if(obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k];
+  }
+  return null;
+}
+function deepFindValueV12(obj, keyRegex, maxDepth=4){
+  const seen=new Set();
+  function walk(x,depth){
+    if(!x || depth>maxDepth || seen.has(x))return null;
+    if(typeof x==='object')seen.add(x);
+    if(Array.isArray(x)){
+      for(const item of x){
+        const v=walk(item,depth+1);
+        if(v!==null && v!==undefined && String(v).trim()!=='')return v;
+      }
+      return null;
+    }
+    if(typeof x==='object'){
+      for(const [k,v] of Object.entries(x)){
+        if(keyRegex.test(k) && v!==null && v!==undefined && String(v).trim()!=='')return v;
+      }
+      for(const v of Object.values(x)){
+        const found=walk(v,depth+1);
+        if(found!==null && found!==undefined && String(found).trim()!=='')return found;
+      }
+    }
+    return null;
+  }
+  return walk(obj,0);
+}
+function cin7TrackingInfoV12(order){
+  const tracking = firstValueV12(order, [
+    'tracking','trackingNumber','tracking_number','TrackingNumber','TrackingNo','trackingNo',
+    'consignmentNumber','ConsignmentNumber','shipmentTracking','ShipmentTracking'
+  ]) || deepFindValueV12(order, /(tracking|consignment).*?(number|no)?$/i);
+
+  const carrier = firstValueV12(order, [
+    'carrier','Carrier','shippingCarrier','ShippingCarrier','shipCarrier','ShipCarrier',
+    'deliveryCompany','DeliveryCompany','freightProvider','FreightProvider'
+  ]) || deepFindValueV12(order, /(carrier|deliveryCompany|freightProvider|shippingProvider)/i);
+
+  const eta = firstValueV12(order, [
+    'eta','ETA','estimatedDelivery','EstimatedDelivery','deliveryDate','DeliveryDate',
+    'requiredBy','RequiredBy'
+  ]) || deepFindValueV12(order, /(eta|estimatedDelivery|deliveryDate|requiredBy)/i);
+
+  const etd = firstValueV12(order, [
+    'etd','ETD','dispatchDate','DispatchDate','shippedDate','ShippedDate',
+    'shipDate','ShipDate'
+  ]) || deepFindValueV12(order, /(etd|dispatchDate|shippedDate|shipDate)/i);
+
+  const status = firstValueV12(order, ['status','Status','stage','Stage','orderStatus','OrderStatus']);
+  const shipMethod = firstValueV12(order, ['shipMethod','ShipMethod','shippingMethod','ShippingMethod','deliveryMethod','DeliveryMethod']);
+
+  return {
+    tracking: tracking ? String(tracking).trim() : null,
+    carrier: carrier ? String(carrier).trim() : (shipMethod ? String(shipMethod).trim() : null),
+    eta: eta || null,
+    etd: etd || null,
+    cin7_status: status ? String(status).trim() : null,
+    ship_method: shipMethod ? String(shipMethod).trim() : null
+  };
+}
+function mapCin7StatusV12(status, tracking){
+  const s=String(status||'').toLowerCase();
+  if(/cancel/.test(s))return 'cancelled';
+  if(/deliver|complete|fulfilled|closed/.test(s))return 'delivered';
+  if(/dispatch|shipp|transit|picked/.test(s) || tracking)return 'shipped';
+  if(/approved|authorized|release|pick|pack|process/.test(s))return 'processing';
+  if(/quote|approval|pending/.test(s))return 'pending_approval';
+  if(/new|draft/.test(s))return 'created';
+  return null;
+}
+
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+function authHeader() {
+  const creds = Buffer.from(`${CIN7_USERNAME}:${CIN7_API_KEY}`).toString('base64');
+  return `Basic ${creds}`;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function cin7Fetch(url, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': authHeader(),
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+
+  if (res.status === 429) {
+    await sleep(1000);
+    return cin7Fetch(url, options);
+  }
+
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!res.ok) {
+    throw new Error(`Cin7 API error ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  }
+
+  return data;
+}
+
+async function fetchAllPages(endpoint, extraParams = '') {
+  let page = 1;
+  const limit = 250;
+  let allResults = [];
+
+  while (true) {
+    const url = `${CIN7_BASE_URL}/${endpoint}?rows=${limit}&page=${page}${extraParams}`;
+    const data = await cin7Fetch(url);
+    await sleep(350);
+
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || data.BranchList || data.Branches || data.StockList || data.Stock || [];
+
+    if (!items || items.length === 0) break;
+    allResults = allResults.concat(items);
+    if (items.length < limit) break;
+    page++;
+  }
+
+  return allResults;
+}
+
+async function fetchAllPagesSafe(endpoint, extraParams = '') {
+  let page = 1;
+  const limit = 250;
+  let allResults = [];
+
+  while (true) {
+    const joiner = extraParams ? '&' : '';
+    const url = `${CIN7_BASE_URL}/${endpoint}?rows=${limit}&page=${page}${joiner}${extraParams}`;
+    const data = await cin7Fetch(url);
+    await sleep(350);
+
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || data.BranchList || data.Branches || data.StockList || data.Stock || [];
+
+    if (!items || items.length === 0) break;
+    allResults = allResults.concat(items);
+    if (items.length < limit) break;
+    page++;
+  }
+
+  return allResults;
+}
+
+function pickFirst(obj, keys) {
+  for (const key of keys) {
+    if (obj && obj[key] !== undefined && obj[key] !== null && String(obj[key]).trim() !== '') {
+      return obj[key];
+    }
+  }
+  return '';
+}
+
+function stripHtml(value) {
+  return String(value || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeImageList(p) {
+  const result = [];
+  const direct = pickFirst(p, [
+    'PictureURL','PictureUrl','ImageURL','ImageUrl','Image','Photo','PhotoURL','ProductImage','ThumbnailURL'
+  ]);
+  if (direct) result.push(String(direct));
+
+  for (const key of ['images','Images','productImages','ProductImages']) {
+    const arr = Array.isArray(p[key]) ? p[key] : [];
+    arr.forEach(img => {
+      if (typeof img === 'string') result.push(img);
+      else {
+        const link = img.link || img.url || img.URL || img.ImageURL || img.PictureURL;
+        if (link) result.push(String(link));
+      }
+    });
+  }
+  return [...new Set(result.filter(Boolean))];
+}
+
+
+function normalizeProductOptions(p) {
+  const options = Array.isArray(p.productOptions) ? p.productOptions
+    : Array.isArray(p.ProductOptions) ? p.ProductOptions
+    : [];
+
+  return options.map(opt => ({
+    id: pickFirst(opt, ['id','ID','Id','productOptionId','ProductOptionId']),
+    code: pickFirst(opt, ['code','Code','productOptionCode','ProductOptionCode','sku','SKU']),
+    barcode: pickFirst(opt, ['barcode','Barcode','productOptionBarcode','ProductOptionBarcode']),
+    supplierCode: pickFirst(opt, ['supplierCode','SupplierCode']),
+    option1: pickFirst(opt, ['option1','Option1']),
+    option2: pickFirst(opt, ['option2','Option2']),
+    option3: pickFirst(opt, ['option3','Option3']),
+    size: pickFirst(opt, ['size','Size']),
+    weight: pickFirst(opt, ['weight','Weight']),
+    retailPrice: pickFirst(opt, ['retailPrice','RetailPrice']),
+    wholesalePrice: pickFirst(opt, ['wholesalePrice','WholesalePrice']),
+    vipPrice: pickFirst(opt, ['vipPrice','VipPrice']),
+    specialPrice: pickFirst(opt, ['specialPrice','SpecialPrice']),
+    stockAvailable: pickFirst(opt, ['stockAvailable','StockAvailable']),
+    stockOnHand: pickFirst(opt, ['stockOnHand','StockOnHand'])
+  })).filter(opt => opt.code || opt.barcode || opt.supplierCode);
+}
+
+function getPrimaryProductCode(p, options) {
+  return pickFirst(p, ['code','SKU','Sku','Code','ProductCode'])
+    || pickFirst(options[0] || {}, ['code','barcode','supplierCode'])
+    || pickFirst(p, ['styleCode','StyleCode']);
+}
+
+
+function normalizeCin7Product(p) {
+  const descriptionHtml = pickFirst(p, [
+    'description','Description','ShortDescription','LongDescription','ProductDescription','WebDescription','Notes'
+  ]);
+
+  const pdfDescriptionHtml = pickFirst(p, [
+    'pdfDescription','PdfDescription','specification','Specification','Specifications','specifications'
+  ]);
+
+  const images = normalizeImageList(p);
+  const image = images[0] || '';
+  const productOptions = normalizeProductOptions(p);
+  const primaryCode = getPrimaryProductCode(p, productOptions);
+
+  const specs = {
+    brand: pickFirst(p, ['brand','Brand']),
+    category: pickFirst(p, ['category','Category']),
+    subCategory: pickFirst(p, ['subCategory','SubCategory']),
+    barcode: pickFirst(p, ['barcode','Barcode','BarcodeNumber']),
+    uom: pickFirst(p, ['uom','UOM','UnitOfMeasure']),
+    status: pickFirst(p, ['status','Status']),
+    tags: pickFirst(p, ['tags','Tags']),
+    supplierCode: pickFirst(p, ['supplierCode','SupplierCode']),
+    styleCode: pickFirst(p, ['styleCode','StyleCode']),
+    productType: pickFirst(p, ['productType','ProductType']),
+    productSubtype: pickFirst(p, ['productSubtype','ProductSubtype']),
+    size: pickFirst(p, ['size','Size']),
+    weight: pickFirst(p, ['weight','Weight','UnitWeight']),
+    length: pickFirst(p, ['length','Length']),
+    width: pickFirst(p, ['width','Width']),
+    height: pickFirst(p, ['height','Height']),
+    volume: pickFirst(p, ['volume','Volume']),
+    option1: pickFirst(p, ['option1','Option1']),
+    option2: pickFirst(p, ['option2','Option2']),
+    option3: pickFirst(p, ['option3','Option3']),
+    optionLabel1: pickFirst(p, ['optionLabel1','OptionLabel1']),
+    optionLabel2: pickFirst(p, ['optionLabel2','OptionLabel2']),
+    optionLabel3: pickFirst(p, ['optionLabel3','OptionLabel3']),
+    pdfUpload: pickFirst(p, ['pdfUpload','PdfUpload','specSheet','SpecSheet']),
+    customFields: p.customFields || p.CustomFields || {}
+  };
+
+  return {
+    id: pickFirst(p, ['id','ID','Id','productID','ProductID']),
+    sku: primaryCode,
+    code: primaryCode,
+    name: pickFirst(p, ['name','Name','ProductName']),
+    category: specs.category,
+    brand: specs.brand,
+    price: pickFirst(p, ['retailPrice','PriceTier1','Price','RetailPrice']) || 0,
+    wholesalePrice: pickFirst(p, ['wholesalePrice','WholesalePrice']) || 0,
+    costPrice: pickFirst(p, ['unitCost','UnitCost','CostPrice','Cost']) || 0,
+    description: stripHtml(descriptionHtml),
+    descriptionHtml,
+    pdfDescription: stripHtml(pdfDescriptionHtml),
+    pdfDescriptionHtml,
+    barcode: specs.barcode,
+    unit: specs.uom,
+    status: specs.status,
+    tags: specs.tags,
+    image,
+    images,
+    specs,
+    productOptions,
+    optionCodes: productOptions.map(opt => opt.code).filter(Boolean),
+    raw: p
+  };
+}
+
+
+async function verifyAdmin(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    throw new Error('Missing Authorization token.');
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables.');
+  }
+
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const user = await userRes.json().catch(() => null);
+
+  if (!userRes.ok || !user?.email) {
+    throw new Error('Could not verify Supabase user.');
+  }
+
+  const email = String(user.email || '').toLowerCase();
+
+  const staticAdmins = String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const fallbackAdmins = [
+    'l.gonzalez@allamericanlightingsolutions.com',
+    'l.gonzalez@aalsusa.com',
+    'e.suarez@allamericanlightingsolutions.com'
+  ];
+
+  if ([...staticAdmins, ...fallbackAdmins].includes(email)) {
+    return { ...user, email };
+  }
+
+  // Shared Supabase admin table fallback
+  try {
+    const adminCheckUrl = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/aals_admin_users?select=email,is_active&email=eq.${encodeURIComponent(email)}&is_active=eq.true`;
+    const adminRes = await fetch(adminCheckUrl, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`
+      }
+    });
+    const adminRows = await adminRes.json().catch(() => []);
+    if (adminRes.ok && Array.isArray(adminRows) && adminRows.length) {
+      return { ...user, email };
+    }
+  } catch (err) {
+    console.warn('Shared admin table check failed:', err.message);
+  }
+
+  throw new Error(`Only AALS admins can send orders to Cin7. Current user: ${email}`);
+}
+
+
+function cleanText(value, max = 250) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+
+// ─── v19 Gmail SMTP email sender, no external dependency required ─────────────
+
+const tls = require('tls');
+const crypto = require('crypto');
+
+function smtpReadLineV19(socket, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    let timer = null;
+    function cleanup() {
+      clearTimeout(timer);
+      socket.off('data', onData);
+      socket.off('error', onError);
+    }
+    function onError(err) {
+      cleanup();
+      reject(err);
+    }
+    function onData(chunk) {
+      const text = chunk.toString('utf8');
+      // SMTP multiline responses use "250-" for continuation and "250 " for final.
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const last = lines[lines.length - 1] || text;
+      if (/^\d{3}\s/.test(last) || lines.length === 1) {
+        cleanup();
+        resolve(text);
+      }
+    }
+    timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('SMTP timeout waiting for server response.'));
+    }, timeoutMs);
+    socket.on('data', onData);
+    socket.on('error', onError);
+  });
+}
+
+async function smtpCommandV19(socket, command, expectedCodes = []) {
+  if (command) socket.write(command + '\r\n');
+  const response = await smtpReadLineV19(socket);
+  const code = Number(String(response).slice(0, 3));
+  if (expectedCodes.length && !expectedCodes.includes(code)) {
+    throw new Error(`SMTP command failed (${command || 'read'}): ${response}`);
+  }
+  return response;
+}
+
+function smtpEscapeAddressV19(email) {
+  return String(email || '').replace(/[<>\r\n]/g, '').trim();
+}
+
+function buildMimeEmailV19({ fromEmail, to, subject, html }) {
+  const boundary = 'aals_' + crypto.randomBytes(12).toString('hex');
+  const toList = (to || []).map(smtpEscapeAddressV19).filter(Boolean).join(', ');
+  return [
+    `From: AALS Catalog <${smtpEscapeAddressV19(fromEmail)}>`,
+    `To: ${toList}`,
+    `Subject: ${String(subject || '').replace(/\r?\n/g, ' ')}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    String(html || ''),
+    '',
+    `--${boundary}--`,
+    '.',
+    ''
+  ].join('\r\n');
+}
+
+async function sendGmailSmtpEmailV19({ fromEmail, to, subject, html }) {
+  const SMTP_USER = process.env.SMTP_USER || process.env.GMAIL_USER || '';
+  const SMTP_PASS = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
+
+  if (!SMTP_USER || !SMTP_PASS) {
+    throw new Error('SMTP_USER and SMTP_PASS are not configured.');
+  }
+
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT || 465);
+  const sender = fromEmail || process.env.FROM_EMAIL || SMTP_USER;
+  const recipients = (to || []).map(smtpEscapeAddressV19).filter(Boolean);
+
+  if (!recipients.length) throw new Error('No email recipients provided.');
+
+  return await new Promise((resolve, reject) => {
+    const socket = tls.connect(port, host, { servername: host }, async () => {
+      try {
+        await smtpReadLineV19(socket);
+        await smtpCommandV19(socket, 'EHLO aals-catalog.local', [250]);
+        await smtpCommandV19(socket, 'AUTH LOGIN', [334]);
+        await smtpCommandV19(socket, Buffer.from(SMTP_USER).toString('base64'), [334]);
+        await smtpCommandV19(socket, Buffer.from(SMTP_PASS).toString('base64'), [235]);
+        await smtpCommandV19(socket, `MAIL FROM:<${smtpEscapeAddressV19(sender)}>`, [250]);
+        for (const recipient of recipients) {
+          await smtpCommandV19(socket, `RCPT TO:<${recipient}>`, [250, 251]);
+        }
+        await smtpCommandV19(socket, 'DATA', [354]);
+        socket.write(buildMimeEmailV19({ fromEmail: sender, to: recipients, subject, html }));
+        const dataResponse = await smtpReadLineV19(socket);
+        const dataCode = Number(String(dataResponse).slice(0, 3));
+        if (![250].includes(dataCode)) {
+          throw new Error(`SMTP DATA failed: ${dataResponse}`);
+        }
+        await smtpCommandV19(socket, 'QUIT', [221]);
+        socket.end();
+        resolve({ id: 'gmail-smtp-' + Date.now(), provider: 'gmail_smtp' });
+      } catch (err) {
+        try { socket.end(); } catch (_) {}
+        reject(err);
+      }
+    });
+
+    socket.setTimeout(30000, () => {
+      try { socket.destroy(); } catch (_) {}
+      reject(new Error('SMTP connection timeout.'));
+    });
+
+    socket.on('error', reject);
+  });
+}
+
+
+function getFirstItem(order) {
+  return Array.isArray(order.items) && order.items.length ? order.items[0] : {};
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function buildCin7SalesOrder(order, adminUser) {
+  const first = getFirstItem(order);
+  const orderNumber = cleanText(order.order_number || order.quote_number || `AALS-${Date.now()}`, 30);
+  const workOrder = cleanText(
+    order.work_order_number ||
+    order.work_order ||
+    order.customer_po ||
+    first.work_order ||
+    first.customer_po ||
+    order?.cin7_order_fields?.CustomerPO ||
+    order?.cin7_order_fields?.CustomerPONumber ||
+    order.reference ||
+    '',
+    80
+  );
+  const storeNum = cleanText(first.store_num || '');
+  const storeName = cleanText(first.store || `Bath & Body Works${storeNum ? ' Store #' + storeNum : ''}`);
+  const requestedBy = cleanText(order.user_email || adminUser.email || '');
+  const todayIso = new Date().toISOString();
+  const memberEmail = cleanText(process.env.CIN7_MEMBER_EMAIL || '');
+  const customerEmail = cleanText(process.env.CIN7_CUSTOMER_EMAIL || '');
+  const fallbackEmail = cleanText(process.env.CIN7_FALLBACK_EMAIL || process.env.ADMIN_EMAIL || 'orders@aalsusa.com');
+  const orderEmail = cleanText(order.user_email || adminUser.email || '');
+  const cin7Email = isValidEmail(customerEmail) ? customerEmail : (isValidEmail(orderEmail) ? orderEmail : fallbackEmail);
+
+  const lineItems = (order.items || []).map((item, index) => {
+    const code = cleanText(item.cin7_code || item.part || item.vendor_part || '', 100);
+    if (!code) return null;
+
+    const qty = Number(item.order_qty || item.qty || 1);
+    const comments = [
+      item.store_num ? `Store #${item.store_num}` : '',
+      item.store ? `Store: ${item.store}` : '',
+      item.location ? `Location: ${item.location}` : '',
+      item.vendor_part ? `Vendor Part: ${item.vendor_part}` : ''
+    ].filter(Boolean).join(' | ');
+
+    return {
+      sort: (index + 1) * 10,
+      code,
+      styleCode: code,
+      name: cleanText(item.description || code, 250),
+      qty: Number.isFinite(qty) && qty > 0 ? qty : 1,
+      lineComments: comments
+    };
+  }).filter(Boolean);
+
+  if (!lineItems.length) {
+    throw new Error('Order has no valid line items to send to Cin7.');
+  }
+
+  const salesOrder = {
+    reference: orderNumber,
+    customerOrderNo: workOrder || orderNumber,
+    stage: process.env.CIN7_DRAFT_STAGE || 'New',
+    isApproved: false,
+
+    company: process.env.CIN7_CUSTOMER_COMPANY || 'Bath & Body Works',
+
+    // Cin7 requires these contact fields when MemberId is zero / no existing contact is matched.
+    firstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    lastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
+    phone: process.env.CIN7_PHONE || '',
+
+    deliveryCompany: storeNum ? `Bath & Body Works Store #${storeNum}` : 'Bath & Body Works',
+    deliveryFirstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    deliveryLastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
+    deliveryAddress1: cleanText(first.store_address || ''),
+    deliveryCity: cleanText(first.store_city || ''),
+    deliveryState: cleanText(first.store_state || ''),
+    deliveryPostalCode: cleanText(first.store_zip || ''),
+    deliveryCountry: cleanText(first.store_country || 'US'),
+
+    billingCompany: process.env.CIN7_CUSTOMER_COMPANY || 'Bath & Body Works',
+    billingFirstName: process.env.CIN7_FIRST_NAME || 'BBW',
+    billingLastName: process.env.CIN7_LAST_NAME || (storeNum ? `Store ${storeNum}` : 'Store'),
+    billingEmail: cin7Email,
+    billingCountry: 'US',
+
+    internalComments: cleanText(
+      `Created from AALS BBW Catalog as Draft/New. Supabase order: ${orderNumber}. Work Order: ${workOrder || 'Not provided'}. Store: ${storeName}${storeNum ? ' #' + storeNum : ''}. Requested by: ${requestedBy}. Final pricing, tax, shipping, and availability to be confirmed in Cin7. Notes: ${order.notes || ''}`,
+      2000
+    ),
+
+    lineItems,
+    createdDate: todayIso
+  };
+
+  // Cin7 requires Email when MemberId is 0.
+  // MemberEmail is optional and only sent when explicitly configured as a valid e-mail.
+  salesOrder.email = cin7Email;
+  if (isValidEmail(memberEmail)) salesOrder.memberEmail = memberEmail;
+
+  return salesOrder;
+}
+
+// ─── Existing product/catalog endpoints ──────────────────────────────────────
+
+app.get('/api/categories', async (req, res) => {
+  try {
+    const products = await fetchAllPages('products', '&fields=ID,SKU,Category');
+    const cats = [...new Set(products.map(p => p.Category).filter(Boolean))].sort();
+    res.json({ count: cats.length, categories: cats });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/products', async (req, res) => {
+  try {
+    const { category, raw } = req.query;
+    const params = category ? `where=Category%3D'${encodeURIComponent(category)}'` : '';
+    const products = await fetchAllPagesSafe('products', params);
+    const normalized = raw === '1' ? products : products.map(normalizeCin7Product);
+    res.json({ success: true, count: normalized.length, products: normalized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/product-sample', async (req, res) => {
+  try {
+    const data = await cin7Fetch(`${CIN7_BASE_URL}/products?rows=5&page=1`);
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || [];
+    res.json({
+      success: true,
+      count: items.length,
+      fields: items[0] ? Object.keys(items[0]) : [],
+      sample: items.slice(0, 5)
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/product-details/:code', async (req, res) => {
+  try {
+    const code = String(req.params.code || '').replace(/'/g, "''");
+    const data = await cin7Fetch(`${CIN7_BASE_URL}/products?rows=10&page=1&where=code%3D'${encodeURIComponent(code)}'`);
+    const items = Array.isArray(data)
+      ? data
+      : data.ProductList || data.Products || [];
+    const normalized = items.map(normalizeCin7Product);
+    res.json({ success: true, count: normalized.length, products: normalized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/catalog-code-index', async (req, res) => {
+  try {
+    const { includeRaw = '0' } = req.query;
+    const products = await fetchAllPagesSafe('products', '');
+    const normalized = products.map(normalizeCin7Product);
+
+    const index = {};
+    normalized.forEach(p => {
+      const keys = [
+        p.code,
+        p.sku,
+        ...(p.optionCodes || []),
+        p.specs?.supplierCode,
+        p.specs?.styleCode,
+        p.barcode
+      ].filter(Boolean);
+
+      [...new Set(keys.map(k => String(k).trim()).filter(Boolean))].forEach(key => {
+        index[key.toUpperCase()] = {
+          id: p.id,
+          code: p.code,
+          sku: p.sku,
+          name: p.name,
+          image: p.image,
+          images: p.images,
+          description: p.description,
+          descriptionHtml: p.descriptionHtml,
+          pdfDescription: p.pdfDescription,
+          pdfDescriptionHtml: p.pdfDescriptionHtml,
+          brand: p.brand,
+          category: p.category,
+          specs: p.specs,
+          optionCodes: p.optionCodes,
+          productOptions: p.productOptions,
+          raw: includeRaw === '1' ? p.raw : undefined
+        };
+      });
+    });
+
+    res.json({
+      success: true,
+      count: Object.keys(index).length,
+      productCount: normalized.length,
+      index
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+function normalizeStockUnitsV26(stockUnits) {
+  const bySku = new Map();
+
+  (Array.isArray(stockUnits) ? stockUnits : []).forEach(unit => {
+    const sku = String(unit.code || unit.Code || unit.sku || unit.SKU || '').trim();
+    if (!sku) return;
+
+    const key = sku.toUpperCase();
+    if (!bySku.has(key)) {
+      bySku.set(key, {
+        id: unit.productOptionId || unit.ProductOptionId || unit.productId || unit.ProductId || null,
+        productId: unit.productId || unit.ProductId || null,
+        productOptionId: unit.productOptionId || unit.ProductOptionId || null,
+        sku,
+        styleCode: unit.styleCode || unit.StyleCode || '',
+        barcode: unit.barcode || unit.Barcode || '',
+        name: unit.productName || unit.ProductName || '',
+        availableQty: 0,
+        stockOnHandQty: 0,
+        openSalesQty: 0,
+        incomingQty: 0,
+        virtualQty: 0,
+        holdingQty: 0,
+        branches: new Map(),
+        lastUpdated: unit.modifiedDate || unit.ModifiedDate || null
+      });
+    }
+
+    const record = bySku.get(key);
+    const available = Number(unit.available ?? unit.Available ?? 0) || 0;
+    const onHand = Number(unit.stockOnHand ?? unit.StockOnHand ?? 0) || 0;
+    const openSales = Number(unit.openSales ?? unit.OpenSales ?? 0) || 0;
+    const incoming = Number(unit.incoming ?? unit.Incoming ?? 0) || 0;
+    const virtualQty = Number(unit.virtual ?? unit.Virtual ?? 0) || 0;
+    const holding = Number(unit.holding ?? unit.Holding ?? 0) || 0;
+    const branch = String(unit.branchName || unit.BranchName || 'Unknown').trim() || 'Unknown';
+
+    record.availableQty += available;
+    record.stockOnHandQty += onHand;
+    record.openSalesQty += openSales;
+    record.incomingQty += incoming;
+    record.virtualQty += virtualQty;
+    record.holdingQty += holding;
+    if (!record.name) record.name = unit.productName || unit.ProductName || '';
+    if (!record.barcode) record.barcode = unit.barcode || unit.Barcode || '';
+    if (!record.styleCode) record.styleCode = unit.styleCode || unit.StyleCode || '';
+
+    if (!record.branches.has(branch)) {
+      record.branches.set(branch, { branch, qty: 0, stockOnHand: 0, openSales: 0, incoming: 0 });
+    }
+    const branchRecord = record.branches.get(branch);
+    branchRecord.qty += available;
+    branchRecord.stockOnHand += onHand;
+    branchRecord.openSales += openSales;
+    branchRecord.incoming += incoming;
+
+    const modified = unit.modifiedDate || unit.ModifiedDate;
+    if (modified && (!record.lastUpdated || new Date(modified) > new Date(record.lastUpdated))) {
+      record.lastUpdated = modified;
+    }
+  });
+
+  return [...bySku.values()].map(record => ({
+    ...record,
+    branchStock: [...record.branches.values()],
+    branches: undefined,
+    lastUpdated: record.lastUpdated || new Date().toISOString()
+  }));
+}
+
+app.get('/api/stock', async (req, res) => {
+  try {
+    const { branch } = req.query;
+    const stockData = await fetchAllPagesSafe('Stock');
+    const branchTerm = String(branch || '').trim().toLowerCase();
+    const filtered = branchTerm
+      ? stockData.filter(unit => String(unit.branchName || unit.BranchName || '').toLowerCase().includes(branchTerm))
+      : stockData;
+    const normalized = normalizeStockUnitsV26(filtered);
+
+    res.json({ success: true, count: normalized.length, stock: normalized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/stock/:sku', async (req, res) => {
+  try {
+    const sku = String(req.params.sku || '').trim();
+    const where = `where=${encodeURIComponent(`Code='${sku.replace(/'/g, "''")}'`)}`;
+    const items = await fetchAllPagesSafe('Stock', where);
+    const normalized = normalizeStockUnitsV26(items);
+    if (!normalized.length) return res.json({ success: true, sku, availableQty: 0, stockOnHandQty: 0, openSalesQty: 0, incomingQty: 0, branchStock: [] });
+    res.json({ success: true, ...normalized[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/catalog', async (req, res) => {
+  try {
+    const { category, includeStock = '1', raw } = req.query;
+    const params = category ? `where=Category%3D'${encodeURIComponent(category)}'` : '';
+
+    // Safer call: Cin7 Omni can reject unsupported `fields` parameters.
+    // We fetch the product object as-is, then normalize image/spec fields in the proxy.
+    const products = await fetchAllPagesSafe('products', params);
+
+    let stockData = [];
+    let stockError = null;
+    if (includeStock !== '0') {
+      try {
+        stockData = await fetchAllPagesSafe('Stock');
+      } catch (stockErr) {
+        stockError = stockErr.message;
+      }
+    }
+
+    const stockMap = {};
+    normalizeStockUnitsV26(stockData).forEach(item => {
+      stockMap[String(item.sku || '').toUpperCase()] = item;
+    });
+
+    const enriched = products.map(p => {
+      const normalized = normalizeCin7Product(p);
+      const stock = stockMap[String(normalized.sku || '').toUpperCase()] || stockMap[String(normalized.code || '').toUpperCase()] || {};
+      return {
+        ...normalized,
+        availableQty: stock.availableQty ?? null,
+        stockOnHandQty: stock.stockOnHandQty ?? null,
+        openSalesQty: stock.openSalesQty ?? null,
+        incomingQty: stock.incomingQty ?? null,
+        branchStock: stock.branchStock ?? [],
+        stockLastUpdated: new Date().toISOString(),
+        raw: raw === '1' ? p : undefined
+      };
+    });
+
+    res.json({
+      success: true,
+      count: enriched.length,
+      products: enriched,
+      stockWarning: stockError
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/branches', async (req, res) => {
+  try {
+    const data = await cin7Fetch(`${CIN7_BASE_URL}/ref/branch`);
+    res.json({ success: true, branches: data.BranchList || data || [] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── Shipping rates endpoint, preserved from current proxy ───────────────────
+
+app.post('/api/shipping-rates', async (req, res) => {
+  try {
+    const { toPostalCode, toCountry, weightLbs } = req.body;
+    if (!toPostalCode) return res.status(400).json({ success: false, error: 'toPostalCode required' });
+
+    const SS_KEY = process.env.SS_KEY;
+    const SS_SECRET = process.env.SS_SECRET;
+    if (!SS_KEY || !SS_SECRET) {
+      return res.status(400).json({ success: false, error: 'ShipStation credentials are not configured.' });
+    }
+
+    const ssAuth = Buffer.from(`${SS_KEY}:${SS_SECRET}`).toString('base64');
+    const carriersRes = await fetch('https://ssapi.shipstation.com/carriers', {
+      headers: { 'Authorization': `Basic ${ssAuth}`, 'Content-Type': 'application/json' }
+    });
+    const carriersData = await carriersRes.json();
+    const carriers = Array.isArray(carriersData) ? carriersData : [];
+
+    const weight = weightLbs || 1;
+    const rateRequests = carriers.map(carrier =>
+      fetch('https://ssapi.shipstation.com/shipments/getrates', {
+        method: 'POST',
+        headers: { 'Authorization': `Basic ${ssAuth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          carrierCode: carrier.code,
+          fromPostalCode: '33325',
+          toCountry: toCountry || 'US',
+          toPostalCode,
+          weight: { value: weight, units: 'pounds' },
+          dimensions: { units: 'inches', length: 12, width: 10, height: 8 }
+        })
+      }).then(r => r.json()).catch(() => [])
+    );
+
+    const allRates = await Promise.all(rateRequests);
+    const flatRates = allRates.flat().filter(r => r && r.shipmentCost !== undefined);
+    flatRates.sort((a, b) => (a.shipmentCost + a.otherCost) - (b.shipmentCost + b.otherCost));
+
+    const top5 = flatRates.slice(0, 5).map(r => ({
+      carrier: r.carrierCode,
+      service: r.serviceName,
+      cost: parseFloat((r.shipmentCost + r.otherCost).toFixed(2)),
+      days: r.transitDays || null
+    }));
+
+    res.json({ success: true, rates: top5 });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
+// ─── Cin7 → Operations import helpers ────────────────────────────────────────
+
+function getAuthToken(req) {
+  const auth = req.headers.authorization || '';
+  return auth.startsWith('Bearer ') ? auth.slice(7) : '';
+}
+
+async function supabaseRest(path, options = {}, token = '') {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Proxy missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.');
+  }
+
+  const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/${path.replace(/^\//, '')}`;
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+    ...(options.headers || {})
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  const text = await response.text();
+
+  let data;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Supabase REST error ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  }
+
+  return data;
+}
+
+function normalizeCin7OrderList(data) {
+  if (Array.isArray(data)) return data;
+  return data?.SalesOrderList
+    || data?.SalesOrders
+    || data?.Orders
+    || data?.OrderList
+    || data?.Data
+    || data?.data
+    || [];
+}
+
+function normalizeCin7LineItems(order) {
+  const rawItems =
+    order.LineItems
+    || order.lineItems
+    || order.Items
+    || order.items
+    || order.OrderLines
+    || order.orderLines
+    || [];
+
+  return (Array.isArray(rawItems) ? rawItems : []).map((line, index) => {
+    const code = cleanText(pickFirst(line, [
+      'Code', 'code', 'ProductCode', 'productCode', 'SKU', 'Sku', 'sku',
+      'OptionCode', 'optionCode', 'ItemCode', 'itemCode'
+    ]), 100);
+
+    const description = cleanText(pickFirst(line, [
+      'Name', 'name', 'ProductName', 'productName', 'Description', 'description',
+      'ItemDescription', 'itemDescription'
+    ]), 500);
+
+    const qtyRaw = pickFirst(line, ['Qty', 'qty', 'Quantity', 'quantity', 'OrderedQty', 'orderedQty']);
+    const qty = Number(qtyRaw || 1) || 1;
+
+    return {
+      store: cleanText(pickFirst(order, ['Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName']), 120),
+      store_num: cleanText(pickFirst(order, ['Reference', 'reference', 'CustomerReference', 'customerReference']), 80),
+      store_address: cleanText(pickFirst(order, ['DeliveryAddress1', 'deliveryAddress1', 'ShipAddress1', 'shipAddress1']), 180),
+      store_city: cleanText(pickFirst(order, ['DeliveryCity', 'deliveryCity', 'ShipCity', 'shipCity']), 80),
+      store_state: cleanText(pickFirst(order, ['DeliveryState', 'deliveryState', 'ShipState', 'shipState']), 40),
+      store_zip: cleanText(pickFirst(order, ['DeliveryPostalCode', 'deliveryPostalCode', 'ShipPostCode', 'shipPostCode']), 30),
+      store_country: cleanText(pickFirst(order, ['DeliveryCountry', 'deliveryCountry', 'ShipCountry', 'shipCountry']), 50),
+      part: code || `CIN7-LINE-${index + 1}`,
+      cin7_code: code,
+      vendor_part: cleanText(pickFirst(line, ['SupplierCode', 'supplierCode', 'VendorPart', 'vendorPart']), 100),
+      description: description || 'Cin7 imported line item',
+      order_qty: qty,
+      location: cleanText(pickFirst(line, ['Location', 'location', 'Bin', 'bin']), 120),
+      cin7_line_payload: line
+    };
+  });
+}
+
+
+// v25: Cin7 exposes two different concepts on Sales Orders:
+// - Status: the document-level state (for example, Void)
+// - Stage: the operational stage (for example, New)
+// A void document must always win over its stage so it cannot be re-imported
+// into Operations as active work.
+function cin7DocumentStatusV25(order) {
+  return cleanText(pickFirst(order, [
+    'Status', 'status', 'OrderStatus', 'orderStatus',
+    'SalesOrderStatus', 'salesOrderStatus', 'Cin7Status', 'cin7Status'
+  ]), 100);
+}
+
+function cin7StageV25(order) {
+  return cleanText(pickFirst(order, ['Stage', 'stage']), 100);
+}
+
+function cin7IsVoidOrderV25(order) {
+  const explicitVoid = pickFirst(order, ['IsVoid', 'isVoid', 'Void', 'void']);
+  if (explicitVoid === true || explicitVoid === 1) return true;
+  if (/^(true|1|yes)$/i.test(String(explicitVoid || '').trim())) return true;
+
+  const documentStatus = cin7DocumentStatusV25(order);
+  return /^(void|voided)$/i.test(documentStatus);
+}
+
+// v26: The Cin7 reference identifies the Cin7 Sales Order. The vendor/team
+// Work Order is a separate business field and must never replace that reference.
+function cin7WorkOrderV26(order) {
+  return cleanText(pickFirst(order, [
+    'CustomerOrderNo', 'customerOrderNo',
+    'CustomerPONumber', 'customerPONumber',
+    'CustomerPO', 'customerPO',
+    'PONumber', 'poNumber', 'PO',
+    'WorkOrderNumber', 'workOrderNumber', 'WorkOrder', 'workOrder'
+  ]), 160);
+}
+
+function cin7CustomerNotesV26(order) {
+  return cleanText(pickFirst(order, [
+    'Comments', 'comments', 'CustomerComments', 'customerComments',
+    'Notes', 'notes', 'CustomerNotes', 'customerNotes'
+  ]), 1500);
+}
+
+function cin7DeliveryInstructionsV26(order) {
+  return cleanText(pickFirst(order, [
+    'DeliveryInstructions', 'deliveryInstructions',
+    'ShippingInstructions', 'shippingInstructions',
+    'DeliveryNotes', 'deliveryNotes'
+  ]), 1500);
+}
+
+
+function normalizeCin7SalesOrderForOperations(order, adminUser) {
+  const id = String(pickFirst(order, [
+    'Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId', 'OrderId', 'orderId'
+  ]) || '');
+
+  const code = cleanText(pickFirst(order, [
+    'Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number',
+    'SalesOrderNumber', 'salesOrderNumber', 'InvoiceNumber', 'invoiceNumber'
+  ]), 100);
+
+  const reference = cleanText(pickFirst(order, [
+    // Cin7 Sales Orders list uses Ref. This is the number AALS wants to track.
+    'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
+    'Reference', 'reference', 'CustomerReference', 'customerReference'
+  ]), 160);
+
+  const workOrder = cin7WorkOrderV26(order);
+  const customerNotes = cin7CustomerNotesV26(order);
+  const deliveryInstructions = cin7DeliveryInstructionsV26(order);
+
+  const documentStatus = cin7DocumentStatusV25(order);
+  const stage = cin7StageV25(order);
+  const operationalState = stage || documentStatus;
+  const status = cin7IsVoidOrderV25(order)
+    ? 'cancelled'
+    : (operationalState ? operationalState.toLowerCase().replace(/\s+/g, '_') : 'imported_from_cin7');
+
+  const createdAt = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date',
+    'OrderDate', 'orderDate'
+  ]) || new Date().toISOString();
+
+  const updatedAt = pickFirst(order, [
+    'ModifiedDate', 'modifiedDate', 'UpdatedAt', 'updatedAt', 'LastModifiedDate',
+    'lastModifiedDate'
+  ]) || new Date().toISOString();
+
+  const customerName = cleanText(pickFirst(order, [
+    'Company', 'company', 'Customer', 'customer', 'CustomerName', 'customerName',
+    'AccountName', 'accountName', 'BillingCompany', 'billingCompany',
+    'DeliveryCompany', 'deliveryCompany'
+  ]), 180);
+
+  const customerEmail = cleanText(pickFirst(order, [
+    'Email', 'email', 'CustomerEmail', 'customerEmail', 'BillingEmail', 'billingEmail',
+    'ContactEmail', 'contactEmail'
+  ]), 180);
+
+  const memberName = cleanText(pickFirst(order, [
+    'Member', 'member', 'MemberName', 'memberName', 'SalesRep', 'salesRep',
+    'SalesRepresentative', 'salesRepresentative'
+  ]), 180);
+
+  const createdBy = cleanText(pickFirst(order, [
+    'CreatedBy', 'createdBy', 'User', 'user', 'EnteredBy', 'enteredBy'
+  ]), 180);
+
+  const displayNumber = reference || code || id || `CIN7-${Date.now()}`;
+  const prefixedDisplayNumber = /^cin7/i.test(displayNumber) ? displayNumber : (reference ? `Cin7 Ref #${displayNumber}` : `Cin7 #${displayNumber}`);
+
+  let items = normalizeCin7LineItems(order);
+  if (!items.length) {
+    items = [{
+      store: customerName || 'Cin7 Customer',
+      store_num: reference || code || id,
+      store_address: cleanText(pickFirst(order, ['DeliveryAddress1','deliveryAddress1','ShipAddress1','shipAddress1']), 180),
+      store_city: cleanText(pickFirst(order, ['DeliveryCity','deliveryCity','ShipCity','shipCity']), 80),
+      store_state: cleanText(pickFirst(order, ['DeliveryState','deliveryState','ShipState','shipState']), 40),
+      store_zip: cleanText(pickFirst(order, ['DeliveryPostalCode','deliveryPostalCode','ShipPostCode','shipPostCode']), 30),
+      store_country: cleanText(pickFirst(order, ['DeliveryCountry','deliveryCountry','ShipCountry','shipCountry']), 50),
+      part: code || reference || id || 'CIN7-ORDER',
+      cin7_code: code,
+      vendor_part: '',
+      description: `Imported Cin7 Sales Order ${displayNumber}`,
+      order_qty: 1,
+      location: 'Cin7',
+      cin7_line_payload: null
+    }];
+  } else {
+    items = items.map(item => ({
+      ...item,
+      store: item.store || customerName || 'Cin7 Customer',
+      store_num: item.store_num || reference || code || id,
+      work_order: workOrder || '',
+      customer_po: workOrder || ''
+    }));
+  }
+
+  if (items.length && workOrder && !items[0].work_order) {
+    items[0] = { ...items[0], work_order: workOrder, customer_po: workOrder };
+  }
+
+  const total = Number(pickFirst(order, [
+    'Total', 'total', 'GrandTotal', 'grandTotal', 'OrderTotal', 'orderTotal',
+    'TotalIncTax', 'totalIncTax'
+  ]) || 0) || null;
+
+  return {
+    order_number: prefixedDisplayNumber,
+    reference: reference || displayNumber,
+    ref: reference || displayNumber,
+    user_email: customerEmail || customerName || 'Imported from Cin7',
+    created_by_email: 'Imported from Cin7',
+    requested_by: customerName || customerEmail || 'Cin7',
+    items,
+    notes: [
+      'Imported from Cin7.',
+      customerName ? `Customer: ${customerName}` : '',
+      customerEmail ? `Customer email: ${customerEmail}` : '',
+      memberName ? `Member/Sales rep: ${memberName}` : '',
+      createdBy ? `Cin7 created by: ${createdBy}` : '',
+      reference ? `Reference: ${reference}` : '',
+      workOrder ? `Work Order (WO#): ${workOrder}` : '',
+      customerNotes ? `Cin7 customer notes: ${customerNotes}` : '',
+      deliveryInstructions ? `Cin7 delivery instructions: ${deliveryInstructions}` : '',
+      documentStatus ? `Cin7 document status: ${documentStatus}` : '',
+      stage ? `Cin7 stage: ${stage}` : ''
+    ].filter(Boolean).join('\n'),
+    subtotal: null,
+    tax: null,
+    shipping: null,
+    estimated_total: total,
+    status,
+    source: 'cin7',
+    external_source: 'cin7_sales_orders',
+    external_id: id || reference || code,
+    external_number: displayNumber,
+    cin7_order_id: id,
+    cin7_order_number: code || displayNumber,
+    cin7_ref_number: reference || displayNumber,
+    cin7_status: documentStatus || status,
+    cin7_stage: stage,
+    cin7_reference: reference || displayNumber,
+    cin7_customer_name: customerName,
+    cin7_customer_email: customerEmail,
+    cin7_member_name: memberName,
+    cin7_created_by: createdBy,
+    imported_from_cin7: true,
+    imported_at: new Date().toISOString(),
+    cin7_payload: order,
+    created_at: createdAt,
+    updated_at: updatedAt
+  };
+}
+
+
+function cin7CreatedMillisV14(order) {
+  const raw = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt', 'Date', 'date',
+    'OrderDate', 'orderDate'
+  ]);
+  const d = new Date(raw || 0);
+  return Number.isFinite(d.getTime()) ? d.getTime() : 0;
+}
+
+function cin7RefValueV14(order) {
+  const v = cleanText(pickFirst(order, [
+    'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
+    'Reference', 'reference', 'CustomerReference', 'customerReference',
+    'Code', 'code'
+  ]), 160);
+  return v || '';
+}
+
+function cin7RefNumericV14(order) {
+  const m = String(cin7RefValueV14(order)).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+function sortCin7SalesOrdersLikeCin7V14(items) {
+  return (items || []).slice().sort((a, b) => {
+    const cd = cin7CreatedMillisV14(b) - cin7CreatedMillisV14(a);
+    if (cd !== 0) return cd;
+    const rn = cin7RefNumericV14(b) - cin7RefNumericV14(a);
+    if (rn !== 0) return rn;
+    return String(cin7RefValueV14(b)).localeCompare(String(cin7RefValueV14(a)));
+  });
+}
+
+async function fetchCin7SalesOrdersForImport({ rows = 250, startDate = null } = {}) {
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
+  const all = [];
+  let page = 1;
+
+  // Read every page required to cover the open-ended date window. There is no
+  // fixed record/page cap: stop at the end of Cin7 results or after reaching
+  // a full page whose dated records are all older than the start date.
+  while (true) {
+    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
+    const data = await cin7Fetch(url);
+    const items = normalizeCin7OrderList(data);
+
+    if (!items.length) break;
+    all.push(...items);
+    if (items.length < safeRows) break;
+
+    if (startDate) {
+      const dated = items.map(cin7OrderDateForSyncV17).filter(Boolean);
+      if (dated.length && dated.every(d => d < startDate)) break;
+    }
+
+    page++;
+    await sleep(350);
+  }
+
+  return sortCin7SalesOrdersLikeCin7V14(all);
+}
+
+
+function parseCin7SyncDateV17(value, fallback) {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+  const d = new Date(raw + (raw.length === 10 ? 'T00:00:00' : ''));
+  return Number.isFinite(d.getTime()) ? d : fallback;
+}
+
+function cin7OrderDateForSyncV17(order) {
+  const raw = pickFirst(order, [
+    'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt',
+    'Date', 'date', 'OrderDate', 'orderDate'
+  ]);
+  const d = new Date(raw || 0);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+function filterCin7OrdersByDateRangeV17(orders, startDate, endDateExclusive = null) {
+  return (orders || []).filter(order => {
+    const d = cin7OrderDateForSyncV17(order);
+    if (!d) return false;
+    if (d < startDate) return false;
+    // v23: open-ended sync. If no explicit end date is provided, do not cap future/current records.
+    if (endDateExclusive && d >= endDateExclusive) return false;
+    return true;
+  });
+}
+
+function cin7ReferenceKeysV25(order) {
+  const preferredRef = cin7RefValueV14(order);
+  const fallbackCode = cleanText(pickFirst(order, [
+    'Code', 'code', 'OrderNumber', 'orderNumber', 'Number', 'number',
+    'SalesOrderNumber', 'salesOrderNumber'
+  ]), 160);
+
+  return [...new Set([preferredRef || fallbackCode]
+    .map(normalizeRefLooseV24)
+    .filter(Boolean))];
+}
+
+function operationsReferenceKeysV25(order) {
+  return [...new Set([
+    order?.order_number,
+    order?.reference,
+    order?.ref,
+    order?.external_number,
+    order?.cin7_ref_number,
+    order?.cin7_reference,
+    order?.cin7_order_number
+  ].map(normalizeRefLooseV24).filter(Boolean))];
+}
+
+function operationsRowsMatchingCin7V25(existingRows, cin7Order) {
+  const refKeys = new Set(cin7ReferenceKeysV25(cin7Order));
+  const cin7Id = String(pickFirst(cin7Order, [
+    'Id', 'ID', 'id', 'SalesOrderID', 'salesOrderId', 'OrderId', 'orderId'
+  ]) || '').trim();
+
+  return (existingRows || []).filter(row => {
+    const sameImportedId = cin7Id
+      && String(row?.external_source || '') === 'cin7_sales_orders'
+      && String(row?.external_id || '').trim() === cin7Id;
+    if (sameImportedId) return true;
+    return operationsReferenceKeysV25(row).some(key => refKeys.has(key));
+  });
+}
+
+async function fetchOperationsOrdersV25(token) {
+  const pageSize = 1000;
+  const allRows = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await supabaseRest(
+      `orders?select=*&limit=${pageSize}&offset=${offset}`,
+      { method: 'GET' },
+      token
+    );
+    const rows = Array.isArray(page) ? page : [];
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return allRows;
+}
+
+async function patchOperationsOrderCancelledV25(row, token) {
+  if (!row?.id) return 0;
+  const updated = await supabaseRest(
+    `orders?id=eq.${encodeURIComponent(row.id)}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+    },
+    token
+  );
+  return Array.isArray(updated) ? updated.length : 0;
+}
+
+async function reconcileVoidCin7OrdersV25(voidOrders, existingRows, token) {
+  const matchesById = new Map();
+  for (const cin7Order of (voidOrders || [])) {
+    for (const row of operationsRowsMatchingCin7V25(existingRows, cin7Order)) {
+      if (row?.id && String(row.status || '').toLowerCase() !== 'cancelled') {
+        matchesById.set(String(row.id), row);
+      }
+    }
+  }
+
+  const rows = [...matchesById.values()];
+  let cancelled = 0;
+  for (let index = 0; index < rows.length; index += 8) {
+    const batch = rows.slice(index, index + 8);
+    const results = await Promise.all(batch.map(row => patchOperationsOrderCancelledV25(row, token)));
+    cancelled += results.reduce((sum, count) => sum + count, 0);
+  }
+  return cancelled;
+}
+
+function cin7OperationsMetadataLinesV26(order) {
+  const workOrder = cin7WorkOrderV26(order);
+  const customerNotes = cin7CustomerNotesV26(order);
+  const deliveryInstructions = cin7DeliveryInstructionsV26(order);
+  return [
+    workOrder ? `Work Order (WO#): ${workOrder}` : '',
+    customerNotes ? `Cin7 customer notes: ${customerNotes}` : '',
+    deliveryInstructions ? `Cin7 delivery instructions: ${deliveryInstructions}` : ''
+  ].filter(Boolean);
+}
+
+async function syncCin7MetadataToExistingOperationsV26(cin7Orders, existingRows, token) {
+  const pendingById = new Map();
+
+  for (const cin7Order of (cin7Orders || [])) {
+    const metadataLines = cin7OperationsMetadataLinesV26(cin7Order);
+    if (!metadataLines.length) continue;
+
+    for (const row of operationsRowsMatchingCin7V25(existingRows, cin7Order)) {
+      if (!row?.id) continue;
+      const currentNotes = String(row.notes || '').trim();
+      const missingLines = metadataLines.filter(line => !currentNotes.toLowerCase().includes(line.toLowerCase()));
+      if (!missingLines.length) continue;
+      pendingById.set(String(row.id), {
+        row,
+        notes: [currentNotes, ...missingLines].filter(Boolean).join('\n')
+      });
+    }
+  }
+
+  let updated = 0;
+  const pending = [...pendingById.values()];
+  for (let index = 0; index < pending.length; index += 8) {
+    const batch = pending.slice(index, index + 8);
+    const results = await Promise.all(batch.map(({ row, notes }) => supabaseRest(
+      `orders?id=eq.${encodeURIComponent(row.id)}`,
+      {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ notes })
+      },
+      token
+    )));
+    updated += results.reduce((sum, result) => sum + (Array.isArray(result) ? result.length : 0), 0);
+  }
+
+  return updated;
+}
+
+// ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
+
+app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+
+    const rows = req.body?.rows || req.query.rows || 250;
+
+    // v23 date window:
+    // Default: Start at 2026-06-01 and do NOT use a fixed end date.
+    // This means every sync imports new Cin7 orders from June 1, 2026 forward.
+    // Existing Operations records are preserved by ignore-duplicates below.
+    // Optional override:
+    // CIN7_SYNC_START_DATE=2026-06-01
+    // Optional temporary cap only if explicitly needed:
+    // CIN7_SYNC_END_DATE=YYYY-MM-DD
+    const defaultStartV17 = new Date('2026-06-01T00:00:00');
+    const startDateV17 = parseCin7SyncDateV17(
+      req.body?.start_date || req.query.start_date || process.env.CIN7_SYNC_START_DATE,
+      defaultStartV17
+    );
+
+    const explicitEndV23 = req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE || null;
+    const endDateV17 = explicitEndV23 ? parseCin7SyncDateV17(explicitEndV23, null) : null;
+
+    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, startDate: startDateV17 });
+    const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
+
+    const voidOrdersV25 = cin7Orders.filter(cin7IsVoidOrderV25);
+    const activeCin7OrdersV25 = cin7Orders.filter(order => !cin7IsVoidOrderV25(order));
+    const existingOperationsRowsV25 = await fetchOperationsOrdersV25(token);
+    const cancelledFromVoidV25 = await reconcileVoidCin7OrdersV25(
+      voidOrdersV25,
+      existingOperationsRowsV25,
+      token
+    );
+    const metadataUpdatedV26 = await syncCin7MetadataToExistingOperationsV26(
+      activeCin7OrdersV25,
+      existingOperationsRowsV25,
+      token
+    );
+
+    // A Catalog-created request and its later Cin7 Sales Order share the same
+    // business reference but not necessarily the same external ID. Compare the
+    // normalized reference before inserting to prevent a second Operations row.
+    let matchedExistingByReferenceV25 = 0;
+    const newActiveCin7OrdersV25 = activeCin7OrdersV25.filter(order => {
+      const matches = operationsRowsMatchingCin7V25(existingOperationsRowsV25, order);
+      if (matches.length) matchedExistingByReferenceV25 += 1;
+      return matches.length === 0;
+    });
+
+    const normalized = newActiveCin7OrdersV25
+      .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
+      .filter(order => order.external_id || order.external_number)
+      .sort((a, b) => {
+        const ad = new Date(a.created_at || 0).getTime() || 0;
+        const bd = new Date(b.created_at || 0).getTime() || 0;
+        if (bd !== ad) return bd - ad;
+        const ar = String(a.cin7_reference || a.reference || '').match(/(\d+)/);
+        const br = String(b.cin7_reference || b.reference || '').match(/(\d+)/);
+        return (br ? parseInt(br[1], 10) : -1) - (ar ? parseInt(ar[1], 10) : -1);
+      });
+
+    if (!normalized.length) {
+      return res.json({
+        success: true,
+        imported: 0,
+        fetched: cin7Orders.length,
+        skipped_void: voidOrdersV25.length,
+        cancelled_from_void: cancelledFromVoidV25,
+        metadata_updated: metadataUpdatedV26,
+        matched_existing_by_reference: matchedExistingByReferenceV25,
+        message: voidOrdersV25.length
+          ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
+          : 'No new Cin7 sales orders found to import.',
+        rows
+      });
+    }
+
+    // v16 IMPORTANT:
+    // Use ignore-duplicates instead of merge-duplicates.
+    // This makes Cin7 Sync import ONLY new Cin7 orders.
+    // Existing Operations records are preserved so manual changes such as:
+    // Approved status, notes, tracking, ETA/ETD, carrier, and internal follow-up
+    // are not overwritten by the next Cin7 sync.
+    const imported = await supabaseRest(
+      'orders?on_conflict=external_source,external_id',
+      {
+        method: 'POST',
+        headers: {
+          Prefer: 'resolution=ignore-duplicates,return=representation'
+        },
+        body: JSON.stringify(normalized)
+      },
+      token
+    );
+
+    const insertedRows = Array.isArray(imported) ? imported : [];
+
+    res.json({
+      success: true,
+      fetched: cin7Orders.length,
+      fetched_before_date_filter: typeof cin7OrdersAll !== 'undefined' ? cin7OrdersAll.length : cin7Orders.length,
+      imported: insertedRows.length,
+      skipped_existing: Math.max(0, normalized.length - insertedRows.length) + matchedExistingByReferenceV25,
+      matched_existing_by_reference: matchedExistingByReferenceV25,
+      skipped_void: voidOrdersV25.length,
+      cancelled_from_void: cancelledFromVoidV25,
+      metadata_updated: metadataUpdatedV26,
+      source: 'cin7_sales_orders',
+      sync_mode: 'v26_reference_dedupe_void_reconciliation_work_order_notes',
+      date_filter: {
+        start_date: startDateV17.toISOString().slice(0, 10),
+        end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
+        end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
+      },
+      rows,
+      message: 'Cin7 Sync imported only new active references, copied Work Order and customer/delivery notes, and reconciled Void orders.',
+      orders: insertedRows.map(o => ({
+        id: o.id,
+        order_number: o.order_number,
+        external_id: o.external_id,
+        cin7_order_id: o.cin7_order_id,
+        cin7_order_number: o.cin7_order_number,
+        cin7_reference: o.cin7_reference,
+        reference: o.reference,
+        status: o.status
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
+
+// ─── v20 Send catalog-created order to Cin7 without requiring admin ──────────
+// This endpoint is called by the Catalog right after saving the order in Supabase.
+// It verifies the logged-in Catalog user, then creates a Draft/New Sales Order in Cin7.
+// Quotes and Special Product Requests should NOT use this endpoint.
+app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
+  try {
+    const catalogUser = await verifyCatalogUser(req);
+    const { order } = req.body || {};
+
+    if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    if (order.quote_number && !order.order_number) {
+      return res.status(400).json({ success: false, error: 'Only catalog orders can be sent to Cin7.' });
+    }
+    if (order.cin7_order_id) {
+      return res.status(400).json({ success: false, error: 'This order already has a Cin7 order id.' });
+    }
+
+    const orderEmail = String(order.user_email || order.created_by_email || '').trim().toLowerCase();
+    const tokenEmail = String(catalogUser.email || '').trim().toLowerCase();
+
+    // User can send only their own catalog order unless the record has no email.
+    if (orderEmail && tokenEmail && orderEmail !== tokenEmail) {
+      return res.status(403).json({ success: false, error: 'You can only send your own catalog orders to Cin7.' });
+    }
+
+    const orderForCin7 = {
+      ...order,
+      status: order.status || 'pending_approval',
+      user_email: orderEmail || tokenEmail
+    };
+
+    const salesOrder = buildCin7SalesOrder(orderForCin7, catalogUser);
+    const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
+
+    const cin7Response = await cin7Fetch(endpoint, {
+      method: 'POST',
+      body: JSON.stringify([salesOrder])
+    });
+
+    const result = Array.isArray(cin7Response) ? cin7Response[0] : cin7Response;
+    const success = result?.Success === true || result?.success === true || !!result?.Id || !!result?.id;
+
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: result?.Errors?.join('; ') || result?.errors?.join('; ') || result?.Message || result?.message || 'Cin7 rejected the sales order.',
+        cin7Response,
+        payload: salesOrder
+      });
+    }
+
+    res.json({
+      success: true,
+      cin7_order_id: result.Id || result.id,
+      cin7_order_number: result.Code || result.code || result.Reference || result.reference || result.Ref || result.ref || '',
+      cin7_status: 'sent_to_cin7_from_catalog',
+      cin7Response,
+      payload: salesOrder
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// ─── Send approved catalog order to Cin7 as Draft/New Sales Order ─────────────
+
+app.post('/api/send-order-to-cin7', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const { order } = req.body;
+
+    if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    if (String(order.status || '').toLowerCase() !== 'approved') {
+      return res.status(400).json({ success: false, error: 'Only approved orders can be sent to Cin7.' });
+    }
+    if (order.cin7_order_id) {
+      return res.status(400).json({ success: false, error: 'This order already has a Cin7 order id.' });
+    }
+
+    const salesOrder = buildCin7SalesOrder(order, adminUser);
+    const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
+
+    const cin7Response = await cin7Fetch(endpoint, {
+      method: 'POST',
+      body: JSON.stringify([salesOrder])
+    });
+
+    const result = Array.isArray(cin7Response) ? cin7Response[0] : cin7Response;
+    const success = result?.Success === true || result?.success === true || !!result?.Id || !!result?.id;
+
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: result?.Errors?.join('; ') || result?.errors?.join('; ') || result?.Message || result?.message || 'Cin7 rejected the sales order.',
+        cin7Response,
+        payload: salesOrder
+      });
+    }
+
+    res.json({
+      success: true,
+      cin7_order_id: result.Id || result.id,
+      cin7_order_number: result.Code || result.code || result.Reference || result.reference || '',
+      cin7_status: 'sent_to_cin7_draft',
+      cin7Response,
+      payload: salesOrder
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+// ─── Catalog confirmation emails: orders, quotes, special product requests ────
+
+async function verifyCatalogUser(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token) {
+    throw new Error('Missing Authorization token.');
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables.');
+  }
+
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const user = await userRes.json().catch(() => null);
+  if (!userRes.ok || !user?.email) {
+    throw new Error('Could not verify Supabase user.');
+  }
+
+  return { ...user, email: String(user.email || '').toLowerCase() };
+}
+
+function safeEmailHtml(value, max = 500) {
+  return cleanText(value, max)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function catalogRecordNumberV18(record, type) {
+  return cleanText(
+    record?.order_number ||
+    record?.quote_number ||
+    record?.number ||
+    (String(type).toLowerCase().includes('quote') ? `AALS-Q-${Date.now()}` : `AALS-${Date.now()}`),
+    80
+  );
+}
+
+function catalogConfirmationHtmlV18(record, type, userEmail) {
+  const normalizedType = String(type || '').toLowerCase();
+  const isQuote = normalizedType.includes('quote');
+  const isSpecial = !!(record?.items || []).find(item => item?.special_quote) || /special product request/i.test(String(record?.notes || ''));
+  const title = isSpecial ? 'AALS Special Product Request Confirmation' : (isQuote ? 'AALS Quote Request Confirmation' : 'AALS Order Request Confirmation');
+  const numberLabel = isSpecial || isQuote ? 'Quote Number' : 'Order Number';
+  const number = catalogRecordNumberV18(record, type);
+  const firstItem = Array.isArray(record?.items) ? record.items[0] : null;
+  const workOrder = cleanText(
+    record?.work_order_number || record?.work_order || record?.customer_po ||
+    firstItem?.work_order || firstItem?.customer_po || record?.reference || '',
+    160
+  );
+
+  const itemsRows = (record.items || []).map(item => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.store || '')}${item.store_num ? ' #' + safeEmailHtml(item.store_num) : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.part || item.cin7_code || '')}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${safeEmailHtml(item.description || '', 180)}</td>
+      <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:center;">${safeEmailHtml(item.order_qty || 0)}</td>
+    </tr>
+  `).join('');
+
+  const intro = isSpecial
+    ? 'Your special product request has been received and will be reviewed by AALS.'
+    : isQuote
+      ? 'Your quote request has been received and will be reviewed by AALS.'
+      : 'Your order request has been received and will be reviewed by AALS.';
+
+  return `
+    <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A;line-height:1.45;">
+      <div style="border-bottom:4px solid #c8102e;padding-bottom:12px;margin-bottom:18px;">
+        <h2 style="margin:0;color:#0B1F3A;">${title}</h2>
+        <p style="margin:6px 0 0;color:#64748b;">${intro}</p>
+      </div>
+
+      <p><b>${numberLabel}:</b> ${safeEmailHtml(number)}</p>
+      ${workOrder ? `<p><b>Work Order (WO#):</b> ${safeEmailHtml(workOrder)}</p>` : ''}
+      <p><b>Status:</b> Pending Approval / Review</p>
+      <p><b>Requested by:</b> ${safeEmailHtml(userEmail || record.user_email || '')}</p>
+
+      <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;margin-top:14px;border:1px solid #e2e8f0;">
+        <thead>
+          <tr style="background:#0B1F3A;color:#ffffff;">
+            <th style="padding:9px;text-align:left;">Store</th>
+            <th style="padding:9px;text-align:left;">Part #</th>
+            <th style="padding:9px;text-align:left;">Description</th>
+            <th style="padding:9px;text-align:center;">Qty</th>
+          </tr>
+        </thead>
+        <tbody>${itemsRows || '<tr><td colspan="4" style="padding:10px;">No items listed.</td></tr>'}</tbody>
+      </table>
+
+      ${record.notes ? `<div style="margin-top:14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;"><b>Notes:</b><br>${safeEmailHtml(record.notes, 1500)}</div>` : ''}
+
+      <p style="margin-top:18px;color:#475569;">
+        Final pricing, tax, shipping, availability, approval, ETA and tracking will be managed by AALS through the Operations platform and Cin7.
+      </p>
+
+      <p style="font-size:12px;color:#64748b;margin-top:18px;">
+        This is an automatic confirmation that your request was submitted through the AALS Catalog.
+      </p>
+    </div>
+  `;
+}
+
+async function sendResendEmailV18({ fromEmail, to, subject, html }) {
+  // v19: Prefer Gmail SMTP when SMTP_USER and SMTP_PASS are configured.
+  // This avoids Resend testing-mode recipient restrictions.
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return await sendGmailSmtpEmailV19({ fromEmail, to, subject, html });
+  }
+
+  const RESEND_KEY = process.env.RESEND_KEY;
+  if (!RESEND_KEY) throw new Error('No email provider configured. Add SMTP_USER/SMTP_PASS for Gmail SMTP or RESEND_KEY for Resend.');
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: `AALS Catalog <${fromEmail}>`,
+      to,
+      subject,
+      html
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.id) {
+    throw new Error(data.message || data.error || 'Resend failed to send email.');
+  }
+  return data;
+}
+
+app.post('/api/send-catalog-confirmation-email', async (req, res) => {
+  try {
+    const verifiedUser = await verifyCatalogUser(req);
+    const { record, type } = req.body || {};
+
+    if (!record) return res.status(400).json({ success: false, error: 'Missing record.' });
+
+    const recordUserEmail = String(record.user_email || '').trim().toLowerCase();
+    const userEmail = recordUserEmail || verifiedUser.email;
+
+    if (!isValidEmail(userEmail)) {
+      return res.status(400).json({ success: false, error: 'Missing valid recipient email.' });
+    }
+
+    const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+    const adminEmail = process.env.ADMIN_EMAIL || 'orders2@aalsusa.com';
+    const extraAdmins = String(process.env.CATALOG_CONFIRMATION_CC || '')
+      .split(',')
+      .map(e => e.trim())
+      .filter(Boolean)
+      .filter(isValidEmail);
+
+    const number = catalogRecordNumberV18(record, type);
+    const normalizedType = String(type || '').toLowerCase();
+    const isQuote = normalizedType.includes('quote');
+    const isSpecial = !!(record?.items || []).find(item => item?.special_quote) || /special product request/i.test(String(record?.notes || ''));
+
+    const label = isSpecial ? 'Special Product Request' : (isQuote ? 'Quote Request' : 'Order Request');
+    const htmlBody = catalogConfirmationHtmlV18(record, type, userEmail);
+
+    const customerResult = await sendResendEmailV18({
+      fromEmail,
+      to: [userEmail],
+      subject: `${label} Confirmation - ${number}`,
+      html: htmlBody
+    });
+
+    const adminRecipients = [adminEmail, ...extraAdmins].filter(Boolean).filter(isValidEmail);
+    let adminResult = null;
+    if (adminRecipients.length) {
+      adminResult = await sendResendEmailV18({
+        fromEmail,
+        to: adminRecipients,
+        subject: `New ${label} - ${number} from ${userEmail}`,
+        html: htmlBody
+      });
+    }
+
+    res.json({
+      success: true,
+      customer_email_id: customerResult.id,
+      admin_email_id: adminResult?.id || null,
+      number,
+      type: label
+    });
+  } catch (err) {
+    console.error('Catalog confirmation email error:', err);
+    res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+});
+
+// Backward-compatible alias for older Catalog versions.
+app.post('/api/send-order-email', async (req, res) => {
+  try {
+    const verifiedUser = await verifyCatalogUser(req);
+    const record = req.body?.record || req.body?.order;
+    if (!record) return res.status(400).json({ success: false, error: 'Missing order.' });
+
+    const userEmail = String(record.user_email || req.body?.userEmail || verifiedUser.email || '').trim().toLowerCase();
+    record.user_email = record.user_email || userEmail;
+
+    const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+    const adminEmail = process.env.ADMIN_EMAIL || 'orders2@aalsusa.com';
+    const number = catalogRecordNumberV18(record, 'order');
+    const htmlBody = catalogConfirmationHtmlV18(record, 'order', userEmail);
+
+    const customerResult = await sendResendEmailV18({
+      fromEmail,
+      to: [userEmail],
+      subject: `Order Request Confirmation - ${number}`,
+      html: htmlBody
+    });
+
+    if (isValidEmail(adminEmail)) {
+      await sendResendEmailV18({
+        fromEmail,
+        to: [adminEmail],
+        subject: `New Order Request - ${number} from ${userEmail}`,
+        html: htmlBody
+      });
+    }
+
+    res.json({ success: true, id: customerResult.id, number });
+  } catch (err) {
+    console.error('Order email alias error:', err);
+    res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+});
+
+
+app.get('/', (req, res) => {
+  res.json({ status: 'AALS Cin7 Proxy v26 running ✅', timestamp: new Date().toISOString() });
+});
+
+
+
+app.get('/api/cin7-sync-window', (req, res) => {
+  const explicitEnd = process.env.CIN7_SYNC_END_DATE || null;
+  res.json({
+    success: true,
+    start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
+    end: explicitEnd,
+    end_mode: explicitEnd ? 'explicit_end_date_from_env' : 'open_ended_no_fixed_limit',
+    note: 'v26 preserves the Cin7 Ref, syncs Customer PO / WO and customer-delivery notes, excludes Void orders, and prevents duplicates.'
+  });
+});
+
+
+
+
+
+// ─── v24 Manual single Cin7 Sales Order import by Ref ───────────────────────
+// Use this for one-off exceptions, such as a May order needed in Operations,
+// without widening the normal June 1+ sync window.
+function normalizeRefLooseV24(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/^cin7\s*ref\s*#?/i, '')
+    .replace(/^ref\s*#?/i, '');
+}
+
+function cin7OrderMatchesRefV24(order, requestedRef) {
+  const target = normalizeRefLooseV24(requestedRef);
+  if (!target) return false;
+
+  const values = [
+    cin7RefValueV14(order),
+    pickFirst(order, ['Ref','ref','SalesOrderRef','salesOrderRef','SalesOrderReference','salesOrderReference']),
+    pickFirst(order, ['Reference','reference','CustomerReference','customerReference']),
+    pickFirst(order, ['CustomerOrderNo','customerOrderNo','PONumber','poNumber','PO']),
+    pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']),
+    pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId','OrderId','orderId'])
+  ].map(normalizeRefLooseV24).filter(Boolean);
+
+  return values.includes(target);
+}
+
+function escapeCin7WhereValueV24(value) {
+  return String(value || '').trim().replace(/'/g, "''");
+}
+
+async function fetchCin7SalesOrderByRefV24(ref, { rows = 250, pages = 80 } = {}) {
+  const cleanRef = cleanText(ref, 120);
+  if (!cleanRef) throw new Error('Missing Cin7 Ref.');
+
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
+  const safePages = Math.min(Math.max(parseInt(pages, 10) || 80, 1), 150);
+  const escaped = escapeCin7WhereValueV24(cleanRef);
+
+  // Try exact server-side filters first. If Cin7 accepts the where clause,
+  // this avoids scanning many pages for older orders.
+  const whereFields = [
+    'Ref', 'Reference', 'SalesOrderRef', 'CustomerReference',
+    'CustomerOrderNo', 'PONumber', 'Code', 'OrderNumber', 'Number'
+  ];
+
+  for (const field of whereFields) {
+    try {
+      const where = encodeURIComponent(`${field}='${escaped}'`);
+      const url = `${CIN7_BASE_URL}/SalesOrders?rows=20&page=1&where=${where}`;
+      const data = await cin7Fetch(url);
+      const items = normalizeCin7OrderList(data);
+      const exact = items.find(order => cin7OrderMatchesRefV24(order, cleanRef));
+      if (exact) return { order: exact, method: `where:${field}`, scanned_pages: 1, scanned_records: items.length };
+    } catch (err) {
+      console.warn(`Cin7 single-ref where search failed for ${field}:`, err.message);
+    }
+    await sleep(120);
+  }
+
+  // Fallback: scan pages, useful if the account's SalesOrders endpoint does not
+  // support a specific field in where filters.
+  let scannedRecords = 0;
+  for (let page = 1; page <= safePages; page++) {
+    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
+    const data = await cin7Fetch(url);
+    const items = normalizeCin7OrderList(data);
+    scannedRecords += items.length;
+
+    const found = items.find(order => cin7OrderMatchesRefV24(order, cleanRef));
+    if (found) return { order: found, method: 'page_scan', scanned_pages: page, scanned_records: scannedRecords };
+
+    if (!items.length || items.length < safeRows) break;
+    await sleep(250);
+  }
+
+  return { order: null, method: 'not_found', scanned_pages: safePages, scanned_records: scannedRecords };
+}
+
+app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+
+    const ref = cleanText(req.body?.ref || req.body?.reference || req.query.ref || req.query.reference, 120);
+    if (!ref) return res.status(400).json({ success: false, error: 'Missing Cin7 Ref. Example: B16997-3' });
+
+    const rows = req.body?.rows || req.query.rows || 250;
+    const pages = req.body?.pages || req.query.pages || 80;
+    const found = await fetchCin7SalesOrderByRefV24(ref, { rows, pages });
+
+    if (!found.order) {
+      return res.status(404).json({
+        success: false,
+        error: `Cin7 Sales Order with Ref ${ref} was not found.`,
+        ref,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records
+      });
+    }
+
+    const existingOperationsRowsV25 = await fetchOperationsOrdersV25(token);
+    const existingMatchesV25 = operationsRowsMatchingCin7V25(existingOperationsRowsV25, found.order);
+
+    if (cin7IsVoidOrderV25(found.order)) {
+      const cancelledFromVoidV25 = await reconcileVoidCin7OrdersV25(
+        [found.order],
+        existingOperationsRowsV25,
+        token
+      );
+      return res.json({
+        success: true,
+        ref,
+        found: true,
+        imported: 0,
+        skipped_void: 1,
+        cancelled_from_void: cancelledFromVoidV25,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records,
+        message: `Cin7 Ref ${ref} is Void. It was not imported; matching Operations records were cancelled.`
+      });
+    }
+
+    if (existingMatchesV25.length) {
+      const existing = existingMatchesV25[0];
+      const metadataUpdatedV26 = await syncCin7MetadataToExistingOperationsV26(
+        [found.order],
+        existingOperationsRowsV25,
+        token
+      );
+      return res.json({
+        success: true,
+        ref,
+        found: true,
+        imported: 0,
+        skipped_existing: 1,
+        matched_existing_by_reference: 1,
+        metadata_updated: metadataUpdatedV26,
+        search_method: found.method,
+        scanned_pages: found.scanned_pages,
+        scanned_records: found.scanned_records,
+        message: `Cin7 Ref ${ref} already exists in Operations. Work Order and available Cin7 notes were synchronized without creating a duplicate.`,
+        order: {
+          id: existing.id,
+          order_number: existing.order_number,
+          external_id: existing.external_id,
+          cin7_order_id: existing.cin7_order_id,
+          cin7_order_number: existing.cin7_order_number,
+          cin7_reference: existing.cin7_reference,
+          reference: existing.reference,
+          status: existing.status
+        }
+      });
+    }
+
+    const normalized = normalizeCin7SalesOrderForOperations(found.order, adminUser);
+    normalized.notes = [
+      normalized.notes || '',
+      `Manual single-order import by Ref: ${ref}`,
+      `Imported by: ${adminUser.email}`
+    ].filter(Boolean).join('\n');
+
+    const imported = await supabaseRest(
+      'orders?on_conflict=external_source,external_id',
+      {
+        method: 'POST',
+        headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
+        body: JSON.stringify([normalized])
+      },
+      token
+    );
+
+    const insertedRows = Array.isArray(imported) ? imported : [];
+    const inserted = insertedRows[0] || null;
+
+    res.json({
+      success: true,
+      ref,
+      found: true,
+      imported: insertedRows.length,
+      skipped_existing: insertedRows.length ? 0 : 1,
+      search_method: found.method,
+      scanned_pages: found.scanned_pages,
+      scanned_records: found.scanned_records,
+      message: insertedRows.length
+        ? `Cin7 Ref ${ref} was imported into Operations.`
+        : `Cin7 Ref ${ref} already exists in Operations. No duplicate was created.`,
+      order: inserted ? {
+        id: inserted.id,
+        order_number: inserted.order_number,
+        external_id: inserted.external_id,
+        cin7_order_id: inserted.cin7_order_id,
+        cin7_order_number: inserted.cin7_order_number,
+        cin7_reference: inserted.cin7_reference,
+        reference: inserted.reference,
+        status: inserted.status
+      } : {
+        order_number: normalized.order_number,
+        external_id: normalized.external_id,
+        cin7_order_id: normalized.cin7_order_id,
+        cin7_order_number: normalized.cin7_order_number,
+        cin7_reference: normalized.cin7_reference,
+        reference: normalized.reference,
+        status: normalized.status
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Proxy server running on port ${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  buildCin7SalesOrder,
+  catalogConfirmationHtmlV18,
+  cin7DocumentStatusV25,
+  cin7StageV25,
+  cin7IsVoidOrderV25,
+  normalizeCin7SalesOrderForOperations,
+  normalizeRefLooseV24,
+  cin7ReferenceKeysV25,
+  operationsReferenceKeysV25,
+  operationsRowsMatchingCin7V25
+};
+
+
+// --- v12 NOTE FOR CIN7 IMPORT ENDPOINT ---
+// In the Cin7 import/sync mapping, add these fields to the Supabase upsert payload:
+//
+// const shipV12 = cin7TrackingInfoV12(cin7Order);
+// const mappedStatusV12 = mapCin7StatusV12(shipV12.cin7_status, shipV12.tracking);
+//
+// payload.tracking = shipV12.tracking || payload.tracking || null;
+// payload.tracking_number = shipV12.tracking || payload.tracking_number || null;
+// payload.carrier = shipV12.carrier || payload.carrier || null;
+// payload.etd = shipV12.etd || payload.etd || null;
+// payload.eta = shipV12.eta || payload.eta || null;
+// payload.ship_method = shipV12.ship_method || payload.ship_method || null;
+// payload.cin7_status = shipV12.cin7_status || payload.cin7_status || null;
+// if(mappedStatusV12) payload.status = mappedStatusV12;
+//
+// This lets Operations sync tracking/carrier/ETA/ETD whenever Cin7 returns those values.
+
+
+// --- v13 Cin7 reference-number note ---
+// AALS Operations should display and track Cin7 Sales Orders by the Cin7 Ref column.
+// The import normalization above now prioritizes Ref / Reference / SalesOrderRef over invoice/order number.
+// Cin7 quotes that appear in the Sales Orders list as Draft, Quote Approval Pending, or related stages
+// are imported through the same SalesOrders sync endpoint and retain their Cin7 Ref.
+
+
+// --- v14 Cin7 sync behavior note ---
+// The sync paginates until it covers every Cin7 order from 2026-06-01 forward and sorts imports
+// by Created Date and Ref so Operations visually matches the Cin7 Sales Orders list more closely.
+
+
+// --- v26 Cin7 sync pagination and Work Order note ---
+// Sync has no fixed 350-record cap. It reads all pages needed to cover the configured start date.
+// Customer PO / Work Order and customer-delivery notes are copied into Operations notes while
+// preserving the Cin7 Ref as the order's primary reference.
+
+
+// --- v16 Cin7 Sync Preserve Operations Changes ---
+// Sync mode changed from merge-duplicates to ignore-duplicates.
+// Existing Cin7-imported records in Operations are no longer overwritten.
+// Manual Operations status/approval/tracking/notes remain saved after future Cin7 syncs.
+
+
+// --- v17 Cin7 Sync Date Range ---
+// Sync now imports only records inside a date window.
+// Default window is current-year June and July:
+// start = YYYY-06-01, end exclusive = YYYY-08-01.
+// Existing Operations changes are still preserved because v16 ignore-duplicates remains active.
