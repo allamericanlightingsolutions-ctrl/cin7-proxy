@@ -20,6 +20,19 @@ This proxy connects your website to Cin7 Omni's API.
 - `GET /api/branches` — store branches
 - `GET /api/catalog` — products + stock combined (use this one)
 
+## v26: Work Order / Customer PO synchronization
+
+Catalog v87 sends the required vendor Work Order separately from the internal
+AALS order number. The proxy now:
+
+- keeps the AALS/Cin7 reference as the primary order reference;
+- writes the vendor Work Order to Cin7 `CustomerOrderNo`;
+- includes the Work Order in Catalog confirmation emails;
+- reads `CustomerOrderNo`, `Customer PO`, or `WO#` from Cin7 B2B orders;
+- copies the Work Order plus available customer and delivery notes into
+  Operations notes, including a safe backfill for matching existing records;
+- never creates a duplicate merely because a Work Order is present.
+
 ## v25: Void orders and duplicate prevention
 
 The Cin7-to-Operations sync now treats the Cin7 document `Status` separately
