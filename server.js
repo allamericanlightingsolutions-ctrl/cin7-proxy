@@ -535,18 +535,6 @@ function isValidEmail(value) {
 function buildCin7SalesOrder(order, adminUser) {
   const first = getFirstItem(order);
   const orderNumber = cleanText(order.order_number || order.quote_number || `AALS-${Date.now()}`, 30);
-  const workOrder = cleanText(
-    order.work_order_number ||
-    order.work_order ||
-    order.customer_po ||
-    first.work_order ||
-    first.customer_po ||
-    order?.cin7_order_fields?.CustomerPO ||
-    order?.cin7_order_fields?.CustomerPONumber ||
-    order.reference ||
-    '',
-    80
-  );
   const storeNum = cleanText(first.store_num || '');
   const storeName = cleanText(first.store || `Bath & Body Works${storeNum ? ' Store #' + storeNum : ''}`);
   const requestedBy = cleanText(order.user_email || adminUser.email || '');
@@ -585,7 +573,7 @@ function buildCin7SalesOrder(order, adminUser) {
 
   const salesOrder = {
     reference: orderNumber,
-    customerOrderNo: workOrder || orderNumber,
+    customerOrderNo: orderNumber,
     stage: process.env.CIN7_DRAFT_STAGE || 'New',
     isApproved: false,
 
@@ -612,7 +600,7 @@ function buildCin7SalesOrder(order, adminUser) {
     billingCountry: 'US',
 
     internalComments: cleanText(
-      `Created from AALS BBW Catalog as Draft/New. Supabase order: ${orderNumber}. Work Order: ${workOrder || 'Not provided'}. Store: ${storeName}${storeNum ? ' #' + storeNum : ''}. Requested by: ${requestedBy}. Final pricing, tax, shipping, and availability to be confirmed in Cin7. Notes: ${order.notes || ''}`,
+      `Created from AALS BBW Catalog as Draft/New. Supabase order: ${orderNumber}. Store: ${storeName}${storeNum ? ' #' + storeNum : ''}. Requested by: ${requestedBy}. Final pricing, tax, shipping, and availability to be confirmed in Cin7. Notes: ${order.notes || ''}`,
       2000
     ),
 
@@ -1064,33 +1052,6 @@ function cin7IsVoidOrderV25(order) {
   return /^(void|voided)$/i.test(documentStatus);
 }
 
-// v26: The Cin7 reference identifies the Cin7 Sales Order. The vendor/team
-// Work Order is a separate business field and must never replace that reference.
-function cin7WorkOrderV26(order) {
-  return cleanText(pickFirst(order, [
-    'CustomerOrderNo', 'customerOrderNo',
-    'CustomerPONumber', 'customerPONumber',
-    'CustomerPO', 'customerPO',
-    'PONumber', 'poNumber', 'PO',
-    'WorkOrderNumber', 'workOrderNumber', 'WorkOrder', 'workOrder'
-  ]), 160);
-}
-
-function cin7CustomerNotesV26(order) {
-  return cleanText(pickFirst(order, [
-    'Comments', 'comments', 'CustomerComments', 'customerComments',
-    'Notes', 'notes', 'CustomerNotes', 'customerNotes'
-  ]), 1500);
-}
-
-function cin7DeliveryInstructionsV26(order) {
-  return cleanText(pickFirst(order, [
-    'DeliveryInstructions', 'deliveryInstructions',
-    'ShippingInstructions', 'shippingInstructions',
-    'DeliveryNotes', 'deliveryNotes'
-  ]), 1500);
-}
-
 
 function normalizeCin7SalesOrderForOperations(order, adminUser) {
   const id = String(pickFirst(order, [
@@ -1105,12 +1066,9 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
   const reference = cleanText(pickFirst(order, [
     // Cin7 Sales Orders list uses Ref. This is the number AALS wants to track.
     'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
-    'Reference', 'reference', 'CustomerReference', 'customerReference'
+    'Reference', 'reference', 'CustomerReference', 'customerReference',
+    'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO'
   ]), 160);
-
-  const workOrder = cin7WorkOrderV26(order);
-  const customerNotes = cin7CustomerNotesV26(order);
-  const deliveryInstructions = cin7DeliveryInstructionsV26(order);
 
   const documentStatus = cin7DocumentStatusV25(order);
   const stage = cin7StageV25(order);
@@ -1174,14 +1132,8 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
     items = items.map(item => ({
       ...item,
       store: item.store || customerName || 'Cin7 Customer',
-      store_num: item.store_num || reference || code || id,
-      work_order: workOrder || '',
-      customer_po: workOrder || ''
+      store_num: item.store_num || reference || code || id
     }));
-  }
-
-  if (items.length && workOrder && !items[0].work_order) {
-    items[0] = { ...items[0], work_order: workOrder, customer_po: workOrder };
   }
 
   const total = Number(pickFirst(order, [
@@ -1204,9 +1156,6 @@ function normalizeCin7SalesOrderForOperations(order, adminUser) {
       memberName ? `Member/Sales rep: ${memberName}` : '',
       createdBy ? `Cin7 created by: ${createdBy}` : '',
       reference ? `Reference: ${reference}` : '',
-      workOrder ? `Work Order (WO#): ${workOrder}` : '',
-      customerNotes ? `Cin7 customer notes: ${customerNotes}` : '',
-      deliveryInstructions ? `Cin7 delivery instructions: ${deliveryInstructions}` : '',
       documentStatus ? `Cin7 document status: ${documentStatus}` : '',
       stage ? `Cin7 stage: ${stage}` : ''
     ].filter(Boolean).join('\n'),
@@ -1251,6 +1200,7 @@ function cin7RefValueV14(order) {
   const v = cleanText(pickFirst(order, [
     'Ref', 'ref', 'SalesOrderRef', 'salesOrderRef', 'SalesOrderReference', 'salesOrderReference',
     'Reference', 'reference', 'CustomerReference', 'customerReference',
+    'CustomerOrderNo', 'customerOrderNo', 'PONumber', 'poNumber', 'PO',
     'Code', 'code'
   ]), 160);
   return v || '';
@@ -1422,55 +1372,6 @@ async function reconcileVoidCin7OrdersV25(voidOrders, existingRows, token) {
   return cancelled;
 }
 
-function cin7OperationsMetadataLinesV26(order) {
-  const workOrder = cin7WorkOrderV26(order);
-  const customerNotes = cin7CustomerNotesV26(order);
-  const deliveryInstructions = cin7DeliveryInstructionsV26(order);
-  return [
-    workOrder ? `Work Order (WO#): ${workOrder}` : '',
-    customerNotes ? `Cin7 customer notes: ${customerNotes}` : '',
-    deliveryInstructions ? `Cin7 delivery instructions: ${deliveryInstructions}` : ''
-  ].filter(Boolean);
-}
-
-async function syncCin7MetadataToExistingOperationsV26(cin7Orders, existingRows, token) {
-  const pendingById = new Map();
-
-  for (const cin7Order of (cin7Orders || [])) {
-    const metadataLines = cin7OperationsMetadataLinesV26(cin7Order);
-    if (!metadataLines.length) continue;
-
-    for (const row of operationsRowsMatchingCin7V25(existingRows, cin7Order)) {
-      if (!row?.id) continue;
-      const currentNotes = String(row.notes || '').trim();
-      const missingLines = metadataLines.filter(line => !currentNotes.toLowerCase().includes(line.toLowerCase()));
-      if (!missingLines.length) continue;
-      pendingById.set(String(row.id), {
-        row,
-        notes: [currentNotes, ...missingLines].filter(Boolean).join('\n')
-      });
-    }
-  }
-
-  let updated = 0;
-  const pending = [...pendingById.values()];
-  for (let index = 0; index < pending.length; index += 8) {
-    const batch = pending.slice(index, index + 8);
-    const results = await Promise.all(batch.map(({ row, notes }) => supabaseRest(
-      `orders?id=eq.${encodeURIComponent(row.id)}`,
-      {
-        method: 'PATCH',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({ notes })
-      },
-      token
-    )));
-    updated += results.reduce((sum, result) => sum + (Array.isArray(result) ? result.length : 0), 0);
-  }
-
-  return updated;
-}
-
 // ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
 
 app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
@@ -1508,11 +1409,6 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       existingOperationsRowsV25,
       token
     );
-    const metadataUpdatedV26 = await syncCin7MetadataToExistingOperationsV26(
-      activeCin7OrdersV25,
-      existingOperationsRowsV25,
-      token
-    );
 
     // A Catalog-created request and its later Cin7 Sales Order share the same
     // business reference but not necessarily the same external ID. Compare the
@@ -1543,7 +1439,6 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         fetched: cin7Orders.length,
         skipped_void: voidOrdersV25.length,
         cancelled_from_void: cancelledFromVoidV25,
-        metadata_updated: metadataUpdatedV26,
         matched_existing_by_reference: matchedExistingByReferenceV25,
         message: voidOrdersV25.length
           ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
@@ -1581,16 +1476,15 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       matched_existing_by_reference: matchedExistingByReferenceV25,
       skipped_void: voidOrdersV25.length,
       cancelled_from_void: cancelledFromVoidV25,
-      metadata_updated: metadataUpdatedV26,
       source: 'cin7_sales_orders',
-      sync_mode: 'v26_reference_dedupe_void_reconciliation_work_order_notes',
+      sync_mode: 'v25_reference_dedupe_void_reconciliation_preserve_operations_changes',
       date_filter: {
         start_date: startDateV17.toISOString().slice(0, 10),
         end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
         end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
       },
       rows,
-      message: 'Cin7 Sync imported only new active references, copied Work Order and customer/delivery notes, and reconciled Void orders.',
+      message: 'Cin7 Sync imported only new active references. Void orders were excluded and matching Operations records were cancelled.',
       orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
@@ -1779,12 +1673,6 @@ function catalogConfirmationHtmlV18(record, type, userEmail) {
   const title = isSpecial ? 'AALS Special Product Request Confirmation' : (isQuote ? 'AALS Quote Request Confirmation' : 'AALS Order Request Confirmation');
   const numberLabel = isSpecial || isQuote ? 'Quote Number' : 'Order Number';
   const number = catalogRecordNumberV18(record, type);
-  const firstItem = Array.isArray(record?.items) ? record.items[0] : null;
-  const workOrder = cleanText(
-    record?.work_order_number || record?.work_order || record?.customer_po ||
-    firstItem?.work_order || firstItem?.customer_po || record?.reference || '',
-    160
-  );
 
   const itemsRows = (record.items || []).map(item => `
     <tr>
@@ -1809,7 +1697,6 @@ function catalogConfirmationHtmlV18(record, type, userEmail) {
       </div>
 
       <p><b>${numberLabel}:</b> ${safeEmailHtml(number)}</p>
-      ${workOrder ? `<p><b>Work Order (WO#):</b> ${safeEmailHtml(workOrder)}</p>` : ''}
       <p><b>Status:</b> Pending Approval / Review</p>
       <p><b>Requested by:</b> ${safeEmailHtml(userEmail || record.user_email || '')}</p>
 
@@ -1865,6 +1752,149 @@ async function sendResendEmailV18({ fromEmail, to, subject, html }) {
   }
   return data;
 }
+
+// ─── v27 Vendor emails for public Special Product Request updates ────────────
+
+const recentSpecialRequestEmailsV27 = new Map();
+
+function normalizeItemsV27(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  return [];
+}
+
+function specialRequestReferenceV27(record) {
+  return cleanText(
+    record?.quote_number ||
+    record?.special_quote_number ||
+    record?.reference ||
+    record?.number ||
+    record?.id ||
+    'Special Product Request',
+    100
+  );
+}
+
+function isSpecialProductRequestV27(record) {
+  const reference = specialRequestReferenceV27(record);
+  const items = normalizeItemsV27(record?.items);
+  return /^AALS-Q-/i.test(reference)
+    || items.some(item => item?.special_quote === true || /special.product.request/i.test(String(item?.part || item?.description || '')))
+    || /special.product.request/i.test(String(record?.notes || record?.description || ''));
+}
+
+function requesterEmailV27(record) {
+  return String(
+    record?.user_email ||
+    record?.created_by_email ||
+    record?.requested_by_email ||
+    record?.customer_email ||
+    record?.email ||
+    ''
+  ).trim().toLowerCase();
+}
+
+function specialRequestUpdateHtmlV27({ record, eventType, note, fileName, actorEmail }) {
+  const reference = specialRequestReferenceV27(record);
+  const catalogUrl = String(process.env.CATALOG_URL || 'https://aals-catalog.netlify.app/').trim();
+  const isPdf = eventType === 'pdf';
+  const headline = isPdf ? 'A new PDF is available' : 'AALS posted a new response';
+  const detail = isPdf
+    ? `<p style="margin:14px 0;padding:12px 14px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:10px;"><b>Document:</b> ${safeEmailHtml(fileName || 'PDF document', 200)}</p>`
+    : `<div style="margin:14px 0;padding:12px 14px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:10px;"><b>AALS update:</b><br>${safeEmailHtml(note || 'A new update was added.', 1800).replace(/\n/g, '<br>')}</div>`;
+
+  return `
+    <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A;line-height:1.5;max-width:680px;margin:auto;">
+      <div style="border-bottom:4px solid #c8102e;padding-bottom:12px;margin-bottom:18px;">
+        <h2 style="margin:0;color:#0B1F3A;">${headline}</h2>
+        <p style="margin:6px 0 0;color:#64748b;">Special Product Request ${safeEmailHtml(reference)}</p>
+      </div>
+      <p>Hello,</p>
+      <p>AALS has added ${isPdf ? 'a document' : 'a public response'} to your Special Product Request.</p>
+      ${detail}
+      <p style="margin:22px 0;">
+        <a href="${safeEmailHtml(catalogUrl, 500)}" style="display:inline-block;background:#0B1F3A;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:9px;">View My Special Requests</a>
+      </p>
+      <p style="color:#475569;">Sign in to the AALS Catalog and select <b>My Special Requests</b> to review the complete conversation${isPdf ? ' and securely download the PDF' : ''}.</p>
+      <p style="font-size:12px;color:#64748b;margin-top:22px;">This automatic email was generated from a public update posted by ${safeEmailHtml(actorEmail || 'AALS')}.</p>
+    </div>
+  `;
+}
+
+async function quoteRecordForUpdateV27(entryId, token) {
+  const encoded = encodeURIComponent(String(entryId || '').trim());
+  if (!encoded) return null;
+  let rows = await supabaseRest(`quotes?select=*&id=eq.${encoded}&limit=1`, {}, token);
+  if (Array.isArray(rows) && rows[0]) return rows[0];
+  rows = await supabaseRest(`quotes?select=*&quote_number=eq.${encoded}&limit=1`, {}, token);
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+app.post('/api/send-special-request-update-email', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+    const eventType = String(req.body?.event_type || '').trim().toLowerCase();
+    const entryId = String(req.body?.entry_id || '').trim();
+    const eventId = cleanText(req.body?.event_id || '', 250);
+
+    if (!['note', 'pdf'].includes(eventType)) {
+      return res.status(400).json({ success: false, error: 'event_type must be note or pdf.' });
+    }
+    if (!entryId) return res.status(400).json({ success: false, error: 'Missing Special Product Request id.' });
+
+    const record = await quoteRecordForUpdateV27(entryId, token);
+    if (!record) return res.status(404).json({ success: false, error: 'Special Product Request not found.' });
+    if (!isSpecialProductRequestV27(record)) {
+      return res.status(400).json({ success: false, error: 'Email updates are limited to Special Product Requests.' });
+    }
+
+    const recipient = requesterEmailV27(record);
+    if (!isValidEmail(recipient)) {
+      return res.status(400).json({ success: false, error: 'The requester email is missing or invalid.' });
+    }
+
+    // A repeated browser request for the same saved note/document must not send twice.
+    const dedupeKey = `${eventType}:${eventId || entryId + ':' + cleanText(req.body?.note || req.body?.file_name || '', 200)}`;
+    const now = Date.now();
+    for (const [key, timestamp] of recentSpecialRequestEmailsV27) {
+      if (now - timestamp > 24 * 60 * 60 * 1000) recentSpecialRequestEmailsV27.delete(key);
+    }
+    if (recentSpecialRequestEmailsV27.has(dedupeKey)) {
+      return res.json({ success: true, duplicate: true, recipient, reference: specialRequestReferenceV27(record) });
+    }
+
+    const reference = specialRequestReferenceV27(record);
+    const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+    const result = await sendResendEmailV18({
+      fromEmail,
+      to: [recipient],
+      subject: `AALS Update Available - Special Request ${reference}`,
+      html: specialRequestUpdateHtmlV27({
+        record,
+        eventType,
+        note: cleanText(req.body?.note || '', 1800),
+        fileName: cleanText(req.body?.file_name || '', 200),
+        actorEmail: adminUser.email
+      })
+    });
+
+    recentSpecialRequestEmailsV27.set(dedupeKey, now);
+    res.json({ success: true, email_id: result.id, recipient, reference, event_type: eventType });
+  } catch (err) {
+    console.error('Special Product Request update email error:', err);
+    const message = err.message || String(err);
+    const status = /Only AALS admins|verify Supabase user|Authorization token/i.test(message) ? 403 : 500;
+    res.status(status).json({ success: false, error: message });
+  }
+});
 
 app.post('/api/send-catalog-confirmation-email', async (req, res) => {
   try {
@@ -1967,7 +1997,7 @@ app.post('/api/send-order-email', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v26 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v27 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -1979,7 +2009,7 @@ app.get('/api/cin7-sync-window', (req, res) => {
     start: process.env.CIN7_SYNC_START_DATE || '2026-06-01',
     end: explicitEnd,
     end_mode: explicitEnd ? 'explicit_end_date_from_env' : 'open_ended_no_fixed_limit',
-    note: 'v26 preserves the Cin7 Ref, syncs Customer PO / WO and customer-delivery notes, excludes Void orders, and prevents duplicates.'
+    note: 'v25 excludes Cin7 Void orders, cancels matching Operations rows, and deduplicates by normalized reference.'
   });
 });
 
@@ -2115,11 +2145,6 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
 
     if (existingMatchesV25.length) {
       const existing = existingMatchesV25[0];
-      const metadataUpdatedV26 = await syncCin7MetadataToExistingOperationsV26(
-        [found.order],
-        existingOperationsRowsV25,
-        token
-      );
       return res.json({
         success: true,
         ref,
@@ -2127,11 +2152,10 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
         imported: 0,
         skipped_existing: 1,
         matched_existing_by_reference: 1,
-        metadata_updated: metadataUpdatedV26,
         search_method: found.method,
         scanned_pages: found.scanned_pages,
         scanned_records: found.scanned_records,
-        message: `Cin7 Ref ${ref} already exists in Operations. Work Order and available Cin7 notes were synchronized without creating a duplicate.`,
+        message: `Cin7 Ref ${ref} already exists in Operations under the same normalized reference. No duplicate was created.`,
         order: {
           id: existing.id,
           order_number: existing.order_number,
@@ -2209,8 +2233,6 @@ if (require.main === module) {
 
 module.exports = {
   app,
-  buildCin7SalesOrder,
-  catalogConfirmationHtmlV18,
   cin7DocumentStatusV25,
   cin7StageV25,
   cin7IsVoidOrderV25,
@@ -2252,10 +2274,8 @@ module.exports = {
 // by Created Date and Ref so Operations visually matches the Cin7 Sales Orders list more closely.
 
 
-// --- v26 Cin7 sync pagination and Work Order note ---
+// --- v25 Cin7 sync pagination note ---
 // Sync has no fixed 350-record cap. It reads all pages needed to cover the configured start date.
-// Customer PO / Work Order and customer-delivery notes are copied into Operations notes while
-// preserving the Cin7 Ref as the order's primary reference.
 
 
 // --- v16 Cin7 Sync Preserve Operations Changes ---
