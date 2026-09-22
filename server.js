@@ -1995,9 +1995,215 @@ app.post('/api/send-order-email', async (req, res) => {
   }
 });
 
+// ─── v28 Cin7 Purchase Orders → Operations (read-only) ─────────────────────
+// This integration only reads PurchaseOrders from Cin7. It never creates,
+// updates, receives, voids, or deletes a Cin7 purchase order.
+
+function normalizeCin7PurchaseOrderListV28(data) {
+  if (Array.isArray(data)) return data;
+  return data?.PurchaseOrderList
+    || data?.PurchaseOrders
+    || data?.Orders
+    || data?.OrderList
+    || data?.Data
+    || data?.data
+    || [];
+}
+
+function cin7PoDateV28(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : cleanText(value, 40);
+}
+
+function cin7PoTimestampV28(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : '';
+}
+
+function normalizeCin7PoStatusV28(order) {
+  const raw = cleanText(pickFirst(order, ['Status', 'status', 'Stage', 'stage']), 80);
+  const value = raw.toLowerCase();
+  if (pickFirst(order, ['FullyReceivedDate', 'fullyReceivedDate']) || /received|deliver|complete|closed/.test(value)) return 'Delivered';
+  if (/cancel|void/.test(value)) return 'Cancelled';
+  if (/hold/.test(value)) return 'On Hold';
+  if (/draft|await|pending/.test(value)) return 'Awaiting PO';
+  if (/open|approved|issue|order|partial|receive/.test(value)) return 'Ordered';
+  return raw || 'PO Issued';
+}
+
+function normalizeCin7PurchaseOrderForOperationsV28(order, adminUser = {}) {
+  const id = cleanText(pickFirst(order, ['Id', 'ID', 'id', 'PurchaseOrderId', 'purchaseOrderId']), 120);
+  const reference = cleanText(pickFirst(order, ['Reference', 'reference', 'Ref', 'ref', 'PurchaseOrderNumber', 'purchaseOrderNumber']), 180);
+  const customerOrderNo = cleanText(pickFirst(order, ['CustomerOrderNo', 'customerOrderNo', 'CustomerPONumber', 'customerPONumber']), 500);
+  const modifiedAt = cin7PoTimestampV28(pickFirst(order, ['ModifiedDate', 'modifiedDate', 'UpdatedDate', 'updatedDate']))
+    || cin7PoTimestampV28(pickFirst(order, ['CreatedDate', 'createdDate']));
+  const rawLines = order.LineItems || order.lineItems || order.Items || order.items || order.OrderLines || order.orderLines || [];
+  const lines = (Array.isArray(rawLines) ? rawLines : []).map((line, index) => ({
+    id: cleanText(pickFirst(line, ['Id', 'ID', 'id', 'LineId', 'lineId']) || String(index + 1), 120),
+    code: cleanText(pickFirst(line, ['Code', 'code', 'ProductCode', 'productCode', 'SKU', 'Sku', 'sku', 'ItemCode', 'itemCode']), 160),
+    name: cleanText(pickFirst(line, ['Name', 'name', 'ProductName', 'productName', 'Description', 'description']), 500),
+    quantity: Number(pickFirst(line, ['Qty', 'qty', 'Quantity', 'quantity', 'OrderedQty', 'orderedQty']) || 0) || 0
+  }));
+  const sku = [...new Set(lines.map(line => line.code).filter(Boolean))].join(' | ');
+  const products = lines.map(line => [line.code, line.name].filter(Boolean).join(' · ')).filter(Boolean).join('\n');
+  const quantity = lines.map(line => line.quantity ? `${line.code || line.name || 'Item'}: ${line.quantity}` : '').filter(Boolean).join(' | ');
+  const tracking = cleanText(pickFirst(order, ['TrackingCode', 'trackingCode', 'TrackingNumber', 'trackingNumber', 'ConsignmentNumber', 'consignmentNumber']), 1000);
+  const company = pickFirst(order, ['Company', 'company', 'Supplier', 'supplier', 'SupplierName', 'supplierName']);
+  const vendor = cleanText(typeof company === 'object' ? pickFirst(company, ['Name', 'name', 'Company', 'company']) : company, 250);
+  const poId = id || reference;
+  if (!poId) return null;
+  return {
+    source_key: `cin7_purchase_order:${poId}`,
+    source_sheet: 'Cin7 Purchase Orders',
+    source_system: 'cin7',
+    sync_read_only: true,
+    cin7_po_id: id || null,
+    cin7_reference: reference,
+    cin7_customer_order_no: customerOrderNo,
+    cin7_modified_at: modifiedAt || null,
+    cin7_payload: order,
+    request_date: cin7PoDateV28(pickFirst(order, ['CreatedDate', 'createdDate', 'OrderDate', 'orderDate'])),
+    status: normalizeCin7PoStatusV28(order),
+    date_ordered: cin7PoDateV28(pickFirst(order, ['CreatedDate', 'createdDate', 'OrderDate', 'orderDate'])),
+    supplier_invoice: cleanText(pickFirst(order, ['SupplierInvoiceReference', 'supplierInvoiceReference', 'SupplierInvoiceNo', 'supplierInvoiceNo']), 250),
+    work_order: customerOrderNo,
+    po_number: reference || id,
+    operations_reference: customerOrderNo,
+    sku,
+    quantity,
+    vendor,
+    product_description: products,
+    tracking_number: tracking,
+    etd: cin7PoDateV28(pickFirst(order, ['EstimatedDeliveryDate', 'estimatedDeliveryDate', 'DispatchDate', 'dispatchDate'])),
+    eta: cin7PoDateV28(pickFirst(order, ['EstimatedArrivalDate', 'estimatedArrivalDate', 'ExpectedDeliveryDate', 'expectedDeliveryDate'])),
+    order_number: reference,
+    updated_by_email: cleanText(adminUser.email || '', 250)
+  };
+}
+
+async function fetchCin7PurchaseOrdersV28({ startDate, rows = 250, maxPages = 80 } = {}) {
+  const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
+  const safePages = Math.min(Math.max(parseInt(maxPages, 10) || 80, 1), 80);
+  const modes = [
+    { name: 'modified-date-filter', suffix: startDate ? `&where=${encodeURIComponent(`ModifiedDate>='${startDate}'`)}` : '' },
+    { name: 'unfiltered-fallback', suffix: '' }
+  ];
+  let firstError = null;
+  for (const mode of modes) {
+    const all = [];
+    try {
+      for (let page = 1; page <= safePages; page += 1) {
+        const url = `${CIN7_BASE_URL}/PurchaseOrders?rows=${safeRows}&page=${page}${mode.suffix}`;
+        const data = await cin7Fetch(url, { method: 'GET' });
+        const items = normalizeCin7PurchaseOrderListV28(data);
+        if (!items.length) break;
+        all.push(...items);
+        if (items.length < safeRows) break;
+        await sleep(350);
+      }
+      const startMs = startDate ? new Date(startDate).getTime() : NaN;
+      const filtered = Number.isFinite(startMs)
+        ? all.filter(order => {
+            const value = pickFirst(order, ['ModifiedDate', 'modifiedDate', 'UpdatedDate', 'updatedDate', 'CreatedDate', 'createdDate']);
+            const time = new Date(value || 0).getTime();
+            return Number.isFinite(time) && time >= startMs;
+          })
+        : all;
+      return { orders: filtered, query_mode: mode.name, fetched_before_filter: all.length };
+    } catch (error) {
+      if (!firstError) firstError = error;
+      if (mode.name === 'unfiltered-fallback') {
+        throw new Error(`Cin7 PurchaseOrders could not be read. Filtered request: ${firstError?.message || firstError}. Fallback request: ${error?.message || error}`);
+      }
+      console.warn('Cin7 PO filtered request failed; retrying without the ModifiedDate filter:', error.message || error);
+    }
+  }
+  throw firstError || new Error('Cin7 PurchaseOrders returned no usable response.');
+}
+
+async function readPoSyncStateV28(token) {
+  try {
+    const rows = await supabaseRest('aals_integration_sync_state?sync_key=eq.cin7_purchase_orders&select=*', { method: 'GET' }, token);
+    return Array.isArray(rows) ? rows[0] || null : null;
+  } catch (error) {
+    if (/aals_integration_sync_state|42P01|PGRST205/i.test(String(error.message || error))) return null;
+    throw error;
+  }
+}
+
+async function writePoSyncStateV28(token, values) {
+  return supabaseRest('aals_integration_sync_state?on_conflict=sync_key', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify([{ sync_key: 'cin7_purchase_orders', ...values }])
+  }, token);
+}
+
+async function upsertCin7PurchaseOrdersV28(rows, token) {
+  let saved = 0;
+  for (let index = 0; index < rows.length; index += 50) {
+    const batch = rows.slice(index, index + 50);
+    const result = await supabaseRest('po_information?on_conflict=source_key', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(batch)
+    }, token);
+    saved += Array.isArray(result) ? result.length : 0;
+  }
+  return saved;
+}
+
+app.get('/api/cin7-purchase-orders-sync-status', async (req, res) => {
+  try {
+    await verifyAdmin(req);
+    const state = await readPoSyncStateV28(getAuthToken(req));
+    res.json({ success: true, read_only: true, integration_version: 'v29', state });
+  } catch (err) {
+    res.status(403).json({ success: false, read_only: true, integration_version: 'v29', error: err.message });
+  }
+});
+
+app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
+  try {
+    const adminUser = await verifyAdmin(req);
+    const token = getAuthToken(req);
+    const state = await readPoSyncStateV28(token);
+    const full = String(req.body?.full || req.query.full || '').toLowerCase() === 'true';
+    const fallbackStart = process.env.CIN7_PO_SYNC_START_DATE || '2026-01-01T00:00:00.000Z';
+    const previous = full ? fallbackStart : (state?.last_cursor || fallbackStart);
+    const cursorDate = new Date(previous);
+    if (Number.isFinite(cursorDate.getTime())) cursorDate.setUTCMinutes(cursorDate.getUTCMinutes() - 5);
+    const startDate = Number.isFinite(cursorDate.getTime()) ? cursorDate.toISOString() : fallbackStart;
+    const fetchResult = await fetchCin7PurchaseOrdersV28({
+      startDate,
+      rows: req.body?.rows || req.query.rows || 250,
+      maxPages: req.body?.max_pages || req.query.max_pages || 80
+    });
+    const fetched = fetchResult.orders;
+    const normalized = fetched.map(order => normalizeCin7PurchaseOrderForOperationsV28(order, adminUser)).filter(Boolean);
+    const saved = await upsertCin7PurchaseOrdersV28(normalized, token);
+    const latest = normalized.map(row => row.cin7_modified_at).filter(Boolean).sort().pop() || new Date().toISOString();
+    await writePoSyncStateV28(token, {
+      last_cursor: latest,
+      last_started_at: new Date().toISOString(),
+      last_completed_at: new Date().toISOString(),
+      last_status: 'success',
+      last_message: `Fetched ${fetched.length}; saved ${saved}; mode ${fetchResult.query_mode}.`,
+      last_count: saved,
+      updated_by_email: adminUser.email || ''
+    });
+    res.json({ success: true, read_only: true, integration_version: 'v29', query_mode: fetchResult.query_mode, fetched: fetched.length, saved, start_date: startDate, cursor: latest });
+  } catch (err) {
+    console.error('Cin7 PO synchronization failed:', err);
+    res.status(500).json({ success: false, read_only: true, integration_version: 'v29', error: err.message, stage: 'read-or-save-purchase-orders' });
+  }
+});
+
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v27 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v29 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2240,7 +2446,10 @@ module.exports = {
   normalizeRefLooseV24,
   cin7ReferenceKeysV25,
   operationsReferenceKeysV25,
-  operationsRowsMatchingCin7V25
+  operationsRowsMatchingCin7V25,
+  normalizeCin7PurchaseOrderListV28,
+  normalizeCin7PoStatusV28,
+  normalizeCin7PurchaseOrderForOperationsV28
 };
 
 
