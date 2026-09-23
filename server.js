@@ -2022,6 +2022,17 @@ function cin7PoTimestampV28(value) {
   return Number.isFinite(date.getTime()) ? date.toISOString() : '';
 }
 
+function cin7PoBusinessDateV30(order) {
+  // An old PO modified in 2026 is still an old PO. Use its order date,
+  // falling back to creation date only when no order date was supplied.
+  return cin7PoDateV28(pickFirst(order, ['OrderDate', 'orderDate', 'CreatedDate', 'createdDate']));
+}
+
+function isCin7PoFrom2026V30(order) {
+  const date = cin7PoBusinessDateV30(order);
+  return /^2026-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
+}
+
 function normalizeCin7PoStatusV28(order) {
   const raw = cleanText(pickFirst(order, ['Status', 'status', 'Stage', 'stage']), 80);
   const value = raw.toLowerCase();
@@ -2064,9 +2075,9 @@ function normalizeCin7PurchaseOrderForOperationsV28(order, adminUser = {}) {
     cin7_customer_order_no: customerOrderNo,
     cin7_modified_at: modifiedAt || null,
     cin7_payload: order,
-    request_date: cin7PoDateV28(pickFirst(order, ['CreatedDate', 'createdDate', 'OrderDate', 'orderDate'])),
+    request_date: cin7PoBusinessDateV30(order),
     status: normalizeCin7PoStatusV28(order),
-    date_ordered: cin7PoDateV28(pickFirst(order, ['CreatedDate', 'createdDate', 'OrderDate', 'orderDate'])),
+    date_ordered: cin7PoBusinessDateV30(order),
     supplier_invoice: cleanText(pickFirst(order, ['SupplierInvoiceReference', 'supplierInvoiceReference', 'SupplierInvoiceNo', 'supplierInvoiceNo']), 250),
     work_order: customerOrderNo,
     po_number: reference || id,
@@ -2159,9 +2170,9 @@ app.get('/api/cin7-purchase-orders-sync-status', async (req, res) => {
   try {
     await verifyAdmin(req);
     const state = await readPoSyncStateV28(getAuthToken(req));
-    res.json({ success: true, read_only: true, integration_version: 'v29', state });
+    res.json({ success: true, read_only: true, integration_version: 'v30', state });
   } catch (err) {
-    res.status(403).json({ success: false, read_only: true, integration_version: 'v29', error: err.message });
+    res.status(403).json({ success: false, read_only: true, integration_version: 'v30', error: err.message });
   }
 });
 
@@ -2182,7 +2193,8 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
       maxPages: req.body?.max_pages || req.query.max_pages || 80
     });
     const fetched = fetchResult.orders;
-    const normalized = fetched.map(order => normalizeCin7PurchaseOrderForOperationsV28(order, adminUser)).filter(Boolean);
+    const eligible = fetched.filter(isCin7PoFrom2026V30);
+    const normalized = eligible.map(order => normalizeCin7PurchaseOrderForOperationsV28(order, adminUser)).filter(Boolean);
     const saved = await upsertCin7PurchaseOrdersV28(normalized, token);
     const latest = normalized.map(row => row.cin7_modified_at).filter(Boolean).sort().pop() || new Date().toISOString();
     await writePoSyncStateV28(token, {
@@ -2190,20 +2202,20 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
       last_started_at: new Date().toISOString(),
       last_completed_at: new Date().toISOString(),
       last_status: 'success',
-      last_message: `Fetched ${fetched.length}; saved ${saved}; mode ${fetchResult.query_mode}.`,
+      last_message: `Fetched ${fetched.length}; 2026 POs ${eligible.length}; saved ${saved}; mode ${fetchResult.query_mode}.`,
       last_count: saved,
       updated_by_email: adminUser.email || ''
     });
-    res.json({ success: true, read_only: true, integration_version: 'v29', query_mode: fetchResult.query_mode, fetched: fetched.length, saved, start_date: startDate, cursor: latest });
+    res.json({ success: true, read_only: true, integration_version: 'v30', query_mode: fetchResult.query_mode, fetched: fetched.length, eligible_2026: eligible.length, saved, start_date: startDate, cursor: latest });
   } catch (err) {
     console.error('Cin7 PO synchronization failed:', err);
-    res.status(500).json({ success: false, read_only: true, integration_version: 'v29', error: err.message, stage: 'read-or-save-purchase-orders' });
+    res.status(500).json({ success: false, read_only: true, integration_version: 'v30', error: err.message, stage: 'read-or-save-purchase-orders' });
   }
 });
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v29 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v30 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2449,7 +2461,8 @@ module.exports = {
   operationsRowsMatchingCin7V25,
   normalizeCin7PurchaseOrderListV28,
   normalizeCin7PoStatusV28,
-  normalizeCin7PurchaseOrderForOperationsV28
+  normalizeCin7PurchaseOrderForOperationsV28,
+  isCin7PoFrom2026V30
 };
 
 
