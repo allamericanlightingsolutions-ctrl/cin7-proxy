@@ -1673,6 +1673,11 @@ function catalogConfirmationHtmlV18(record, type, userEmail) {
   const title = isSpecial ? 'AALS Special Product Request Confirmation' : (isQuote ? 'AALS Quote Request Confirmation' : 'AALS Order Request Confirmation');
   const numberLabel = isSpecial || isQuote ? 'Quote Number' : 'Order Number';
   const number = catalogRecordNumberV18(record, type);
+  const orderStatus = String(record?.status || '').trim().toLowerCase();
+  const confirmationStatus = isSpecial || isQuote ? 'Pending Approval / Review'
+    : orderStatus === 'ready_to_pick' ? 'Ready to Pick'
+    : orderStatus === 'waiting_materials' ? 'Waiting for Materials'
+    : 'Pending Review';
 
   const itemsRows = (record.items || []).map(item => `
     <tr>
@@ -1687,7 +1692,7 @@ function catalogConfirmationHtmlV18(record, type, userEmail) {
     ? 'Your special product request has been received and will be reviewed by AALS.'
     : isQuote
       ? 'Your quote request has been received and will be reviewed by AALS.'
-      : 'Your order request has been received and will be reviewed by AALS.';
+      : 'Your catalog order has been received by AALS. You can follow its fulfillment status in the Operations portal.';
 
   return `
     <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A;line-height:1.45;">
@@ -1697,7 +1702,7 @@ function catalogConfirmationHtmlV18(record, type, userEmail) {
       </div>
 
       <p><b>${numberLabel}:</b> ${safeEmailHtml(number)}</p>
-      <p><b>Status:</b> Pending Approval / Review</p>
+      <p><b>Status:</b> ${confirmationStatus}</p>
       <p><b>Requested by:</b> ${safeEmailHtml(userEmail || record.user_email || '')}</p>
 
       <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;margin-top:14px;border:1px solid #e2e8f0;">
