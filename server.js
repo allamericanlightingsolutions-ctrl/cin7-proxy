@@ -1298,8 +1298,7 @@ function operationsReferenceKeysV25(order) {
     order?.ref,
     order?.external_number,
     order?.cin7_ref_number,
-    order?.cin7_reference,
-    order?.cin7_order_number
+    order?.cin7_reference
   ].map(normalizeRefLooseV24).filter(Boolean))];
 }
 
@@ -1310,10 +1309,15 @@ function operationsRowsMatchingCin7V25(existingRows, cin7Order) {
   ]) || '').trim();
 
   return (existingRows || []).filter(row => {
-    const sameImportedId = cin7Id
-      && String(row?.external_source || '') === 'cin7_sales_orders'
-      && String(row?.external_id || '').trim() === cin7Id;
-    if (sameImportedId || (cin7Id && String(row?.cin7_order_id || '').trim() === cin7Id)) return true;
+    // A reference or legacy order number must never override a known identity.
+    const linkedIds = [...new Set([
+      row?.cin7_order_id,
+      String(row?.external_source || '') === 'cin7_sales_orders' ? row?.external_id : null
+    ].filter(value => value != null && String(value).trim() !== '').map(value => String(value).trim()))];
+    if (cin7Id && linkedIds.length) {
+      return linkedIds.every(id => id === cin7Id);
+    }
+    // Reference matching is reserved for records not linked to another Cin7 order.
     return operationsReferenceKeysV25(row).some(key => refKeys.has(key));
   });
 }
@@ -2259,7 +2263,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v34 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v35 running ✅', timestamp: new Date().toISOString() });
 });
 
 
