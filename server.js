@@ -2259,10 +2259,44 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v33 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v34 running ✅', timestamp: new Date().toISOString() });
 });
 
 
+
+// Read-only comparison: business numbers and internal IDs remain separate.
+function cin7AuditMatchV34(order, number) {
+  const target=normalizeRefLooseV24(number);
+  const business=[cin7RefValueV14(order),pickFirst(order,['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber'])].map(normalizeRefLooseV24);
+  const id=String(pickFirst(order,['Id','ID','id','SalesOrderID','salesOrderId'])||'').trim();
+  return { business_match: business.includes(target), internal_id_match: id===String(number).trim() };
+}
+function auditOrderSummaryV34(order) {
+  return {cin7_id:String(pickFirst(order,['Id','ID','id','SalesOrderID','salesOrderId'])||''),
+    order_number:pickFirst(order,['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber'])||'',
+    reference:cin7RefValueV14(order),created:pickFirst(order,['CreatedDate','createdDate','CreatedAt','createdAt','Date','date','OrderDate','orderDate'])||'',
+    status:cin7DocumentStatusV25(order),stage:cin7StageV25(order)};
+}
+app.post('/api/audit-cin7-order-numbers',async(req,res)=>{
+  try {
+    await verifyAdmin(req);
+    const token=getAuthToken(req);
+    const numbers=[...new Set((Array.isArray(req.body?.numbers)?req.body.numbers:[]).map(x=>cleanText(x,120)).filter(Boolean))];
+    if(!numbers.length||numbers.length>10)return res.status(400).json({success:false,error:'Enter 1 to 10 order numbers.'});
+    const orders=await fetchCin7SalesOrdersForImport({rows:250});
+    const existing=await fetchOperationsOrdersV25(token);
+    const start=parseCin7SyncDateV17(process.env.CIN7_SYNC_START_DATE,new Date('2026-06-01T00:00:00'));
+    const results=numbers.map(number=>({number,matches:orders.map(order=>({order,match:cin7AuditMatchV34(order,number)}))
+      .filter(x=>x.match.business_match||x.match.internal_id_match).map(({order,match})=>{
+        const date=cin7OrderDateForSyncV17(order);
+        return {...auditOrderSummaryV34(order),...match,within_start_date:!!date&&date>=start,
+          operations_matches:operationsRowsMatchingCin7V25(existing,order).map(row=>({
+            reference:row.reference||row.order_number||'',cin7_order_id:row.cin7_order_id||'',cin7_order_number:row.cin7_order_number||'',status:row.status||'',
+            identity_conflict:cin7IdentityPatchV33(row,order).conflict}))};
+      })}));
+    res.json({success:true,read_only:true,start_date:start.toISOString().slice(0,10),fetched:orders.length,results});
+  }catch(error){res.status(500).json({success:false,error:error.message});}
+});
 
 app.get('/api/cin7-sync-window', (req, res) => {
   const explicitEnd = process.env.CIN7_SYNC_END_DATE || null;
@@ -2502,6 +2536,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  cin7AuditMatchV34,
   cin7IdentityPatchV33,
   app,
   cin7DocumentStatusV25,
