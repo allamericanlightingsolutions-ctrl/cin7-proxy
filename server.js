@@ -1,6 +1,8 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
+const {AALS_BRANCH,evaluateInventory,unavailable,inventoryNotes,needsInitialInventory,isCatalog,initialStatus,canRecheck}=require('./inventory-rules');
+const SUPABASE_SERVICE_ROLE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -144,6 +146,7 @@ async function fetchAllPages(endpoint, extraParams = '') {
   let page = 1;
   const limit = 250;
   let allResults = [];
+  const seenStockPagesV37=new Set();
 
   while (true) {
     const url = `${CIN7_BASE_URL}/${endpoint}?rows=${limit}&page=${page}${extraParams}`;
@@ -155,8 +158,9 @@ async function fetchAllPages(endpoint, extraParams = '') {
       : data.ProductList || data.Products || data.BranchList || data.Branches || data.StockList || data.Stock || [];
 
     if (!items || items.length === 0) break;
+    if(String(endpoint).toLowerCase()==='stock'){const fingerprint=JSON.stringify(items);if(seenStockPagesV37.has(fingerprint))throw new Error('Cin7 repeated a stock page; manual inventory review is required.');seenStockPagesV37.add(fingerprint);}
     allResults = allResults.concat(items);
-    if (items.length < limit) break;
+    if (items.length < limit && String(endpoint).toLowerCase()!=='stock') break;
     page++;
   }
 
@@ -167,6 +171,7 @@ async function fetchAllPagesSafe(endpoint, extraParams = '') {
   let page = 1;
   const limit = 250;
   let allResults = [];
+  const seenStockPagesV37=new Set();
 
   while (true) {
     const joiner = extraParams ? '&' : '';
@@ -179,8 +184,9 @@ async function fetchAllPagesSafe(endpoint, extraParams = '') {
       : data.ProductList || data.Products || data.BranchList || data.Branches || data.StockList || data.Stock || [];
 
     if (!items || items.length === 0) break;
+    if(String(endpoint).toLowerCase()==='stock'){const fingerprint=JSON.stringify(items);if(seenStockPagesV37.has(fingerprint))throw new Error('Cin7 repeated a stock page; manual inventory review is required.');seenStockPagesV37.add(fingerprint);}
     allResults = allResults.concat(items);
-    if (items.length < limit) break;
+    if (items.length < limit && String(endpoint).toLowerCase()!=='stock') break;
     page++;
   }
 
@@ -769,7 +775,7 @@ function normalizeStockUnitsV26(stockUnits) {
     if (!record.styleCode) record.styleCode = unit.styleCode || unit.StyleCode || '';
 
     if (!record.branches.has(branch)) {
-      record.branches.set(branch, { branch, qty: 0, stockOnHand: 0, openSales: 0, incoming: 0 });
+      record.branches.set(branch, { branch, branchId: unit.branchId ?? unit.BranchId ?? null, qty: 0, stockOnHand: 0, openSales: 0, incoming: 0 });
     }
     const branchRecord = record.branches.get(branch);
     branchRecord.qty += available;
@@ -791,6 +797,121 @@ function normalizeStockUnitsV26(stockUnits) {
   }));
 }
 
+// v37: one stock rule for Catalog checkout and commercially approved B2B orders.
+const INVENTORY_BRANCH_V37 = AALS_BRANCH;
+async function withInventoryDeadlineV37(promise){let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Cin7 inventory request timed out.')),45000)})]);}finally{clearTimeout(timer);}}
+let inventoryPendingV37 = null;
+const inventoryOrderPendingV37 = new Map();
+async function inventorySnapshotV37() {
+  if (!inventoryPendingV37) {
+    inventoryPendingV37 = (async () => {
+      let timer;
+      try {
+        return await Promise.race([
+          fetchAllPagesSafe('Stock').then(normalizeStockUnitsV26),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Cin7 inventory request timed out.')), 45000); })
+        ]);
+      } finally { clearTimeout(timer); inventoryPendingV37 = null; }
+    })();
+  }
+  return inventoryPendingV37;
+}
+async function importedInventoryV37(rows) {
+  const eligible = rows.filter(needsInitialInventory);
+  if (!eligible.length) return rows;
+  let stock, warning = '';
+  try { stock = await inventorySnapshotV37(); } catch(error) { warning = error.message; }
+  for (const row of eligible) {
+    const decision = warning ? unavailable(warning, INVENTORY_BRANCH_V37)
+      : evaluateInventory(row.items, stock, {branch:INVENTORY_BRANCH_V37, cin7Order:row.cin7_payload});
+    // Cin7 document approval reserves inventory; team authorization in Operations
+    // remains a separate required action for imported B2B orders.
+    row.status = initialStatus(row,decision);
+    row.notes = inventoryNotes(row.notes, decision, !isCatalog(row));
+  }
+  return rows;
+}
+async function inventoryPatchV37(row, patch, token) {
+  const path = 'orders?id=eq.'+encodeURIComponent(row.id)+'&status=eq.'+encodeURIComponent(row.status)
+    +(row.updated_at ? '&updated_at=eq.'+encodeURIComponent(row.updated_at) : '');
+  // The caller's visibility is checked with RLS before using the server-only key.
+  // Only the inventory status of an already approved order can be changed.
+  if (!SUPABASE_SERVICE_ROLE_KEY) return supabaseRest(path,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)},token);
+  const response = await fetch(SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+path,{
+    method:'PATCH',headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+SUPABASE_SERVICE_ROLE_KEY,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(patch)
+  });
+  if (!response.ok) throw new Error('The inventory status could not be saved. Check the Render inventory write configuration.');
+  return response.json();
+}
+async function applyApprovedInventoryV37(row, token, stockSnapshot = null) {
+  if (!canRecheck(row)) return {success:true,changed:false,status:row.status};
+  const id=String(row.id);
+  if (inventoryOrderPendingV37.has(id)) return inventoryOrderPendingV37.get(id);
+  const work=(async()=>{
+    // Start conservatively so a failed check never leaves an order ready to pick.
+    const pending = unavailable('Stock verification is pending.', INVENTORY_BRANCH_V37);
+    const claimed = await inventoryPatchV37(row,{status:'waiting_materials',notes:inventoryNotes(row.notes,pending),updated_at:new Date().toISOString()},token);
+    if (!Array.isArray(claimed) || !claimed[0]) return {success:true,changed:false,status:row.status,message:'The order changed while its inventory was being checked.'};
+    const current=claimed[0];
+    let decision;
+    try {
+      let cin7Order = row.cin7_payload || null;
+      const cin7Id = row.cin7_order_id || cin7Order?.Id || cin7Order?.id;
+      if (cin7Id && /^\d+$/.test(String(cin7Id))) {
+        // Use the current Cin7 quantities and branch, including its own reservations.
+        const latest=await withInventoryDeadlineV37(cin7Fetch(CIN7_BASE_URL+'/SalesOrders/'+encodeURIComponent(cin7Id)));
+        cin7Order = Array.isArray(latest) ? latest[0] : (latest.SalesOrder || latest);
+        if (cin7IsVoidOrderV25(cin7Order) || pickFirst(cin7Order,['DispatchedDate','dispatchedDate'])) throw new Error('The Cin7 order is void or dispatched; manual status review is required.');
+      }
+      const lines=cin7Order ? normalizeCin7LineItems(cin7Order) : current.items;
+      decision=evaluateInventory(lines,stockSnapshot || await inventorySnapshotV37(),{branch:INVENTORY_BRANCH_V37,cin7Order});
+    } catch(error) { decision=unavailable(error.message,INVENTORY_BRANCH_V37); }
+    const saved = await inventoryPatchV37(current,{status:decision.status,notes:inventoryNotes(current.notes,decision),updated_at:new Date().toISOString()},token);
+    return {success:true,changed:!!saved?.length,status:saved?.[0]?.status || current.status,inventory:decision};
+  })().finally(()=>inventoryOrderPendingV37.delete(id));
+  inventoryOrderPendingV37.set(id,work);
+  return work;
+}
+async function reconcileApprovedInventoryV37(rows, token) {
+  let updated=0;
+  // Only the new import workflow is reconciled; historical/manual statuses are
+  // preserved. Approval in the updated portal also classifies the order directly.
+  const eligible=rows.filter(row=>canRecheck(row) && (String(row.notes||'').includes('[AALS INVENTORY V37]') || isCatalog(row)));
+  let stock;
+  if(eligible.length)try{stock=await inventorySnapshotV37();}catch(_){}
+  for (const row of eligible) {
+    try { const result=await applyApprovedInventoryV37(row,token,stock); if(result.changed)updated++; }
+    catch(error) { console.warn('Inventory classification deferred for order '+row.id+': '+error.message); }
+  }
+  return updated;
+}
+app.post('/api/order-inventory-check',async(req,res)=>{
+  try {
+    await verifyCatalogUser(req);
+    let decision;
+    try { decision=evaluateInventory(req.body?.items,await inventorySnapshotV37(),{branch:INVENTORY_BRANCH_V37}); }
+    catch(error) { decision=unavailable(error.message,INVENTORY_BRANCH_V37); }
+    res.json({success:true,inventory:decision});
+  } catch(error) { res.status(403).json({success:false,error:'A valid signed-in session is required for the inventory check.'}); }
+});
+app.post('/api/apply-order-inventory-status',async(req,res)=>{
+  try {
+    await verifyCatalogUser(req);
+    const id=String(req.body?.order_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({success:false,error:'A valid Operations order ID is required.'});
+    const token=getAuthToken(req);
+    const rows=await supabaseRest('orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1',{},token);
+    if (!rows?.[0]) return res.status(404).json({success:false,error:'This order is not available to the signed-in user.'});
+    res.json(await applyApprovedInventoryV37(rows[0],token));
+  } catch(error) { res.status(500).json({success:false,error:'Approval remains saved. Inventory status needs review. '+error.message}); }
+});
+
+
+app.post('/api/recheck-workflow-inventory',async(req,res)=>{
+ try{await verifyAdmin(req);const token=getAuthToken(req);const rows=await fetchOperationsOrdersV25(token);
+ const updated=await reconcileApprovedInventoryV37(rows,token);res.json({success:true,updated});
+ }catch(error){res.status(500).json({success:false,error:error.message});}
+});
 app.get('/api/stock', async (req, res) => {
   try {
     const { branch } = req.query;
@@ -1471,10 +1592,13 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         return (br ? parseInt(br[1], 10) : -1) - (ar ? parseInt(ar[1], 10) : -1);
       });
 
+    await importedInventoryV37(normalized);
+    const inventoryRecheckedV37=await reconcileApprovedInventoryV37(existingOperationsRowsV25,token);
     if (!normalized.length) {
       return res.json({
         success: true,
         imported: 0,
+        inventory_rechecked: inventoryRecheckedV37,
         fetched: cin7Orders.length,
         skipped_void: voidOrdersV25.length,
         cancelled_from_void: cancelledFromVoidV25,
@@ -2263,7 +2387,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v36 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v37 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2475,6 +2599,7 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
     }
 
     const normalized = normalizeCin7SalesOrderForOperations(found.order, adminUser);
+    await importedInventoryV37([normalized]);
     normalized.notes = [
       normalized.notes || '',
       `Manual single-order import by Ref: ${ref}`,
@@ -2537,6 +2662,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+  normalizeStockUnitsV26,
+  importedInventoryV37,
+  applyApprovedInventoryV37,
   cin7OrderMatchesRefV24,
   cin7AuditMatchV34,
   cin7IdentityPatchV33,
