@@ -2263,7 +2263,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v35 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v36 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2324,23 +2324,20 @@ function normalizeRefLooseV24(value) {
   return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '')
     .replace(/^cin7\s*ref\s*#?/i, '')
-    .replace(/^ref\s*#?/i, '');
+    .replace(/^ref\s*#?/i, '')
+    .trim();
 }
 
 function cin7OrderMatchesRefV24(order, requestedRef) {
   const target = normalizeRefLooseV24(requestedRef);
   if (!target) return false;
 
-  const values = [
-    cin7RefValueV14(order),
-    pickFirst(order, ['Ref','ref','SalesOrderRef','salesOrderRef','SalesOrderReference','salesOrderReference']),
-    pickFirst(order, ['Reference','reference','CustomerReference','customerReference']),
-    pickFirst(order, ['CustomerOrderNo','customerOrderNo','PONumber','poNumber','PO']),
-    pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']),
-    pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId','OrderId','orderId'])
-  ].map(normalizeRefLooseV24).filter(Boolean);
+  // Manual Add Cin7 Ref matches the reference field, never an internal ID,
+  // WO or another order's sales-order-number field. Use code only if Ref is absent.
+  const reference = cin7RefValueV14(order);
+  const fallbackCode = pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']);
+  const values = [reference || fallbackCode].map(normalizeRefLooseV24).filter(Boolean);
 
   return values.includes(target);
 }
@@ -2540,6 +2537,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  cin7OrderMatchesRefV24,
   cin7AuditMatchV34,
   cin7IdentityPatchV33,
   app,
