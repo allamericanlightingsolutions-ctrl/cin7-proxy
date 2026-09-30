@@ -1225,6 +1225,7 @@ async function fetchCin7SalesOrdersForImport({ rows = 250, startDate = null } = 
   const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
   const all = [];
   let page = 1;
+  const seenPages = new Set();
 
   // Read every page required to cover the open-ended date window. There is no
   // fixed record/page cap: stop at the end of Cin7 results or after reaching
@@ -1235,13 +1236,12 @@ async function fetchCin7SalesOrdersForImport({ rows = 250, startDate = null } = 
     const items = normalizeCin7OrderList(data);
 
     if (!items.length) break;
+    const fingerprint = JSON.stringify(items.map(item => pickFirst(item, ['Id','ID','id','SalesOrderID','Code','Ref'])));
+    if (seenPages.has(fingerprint)) throw new Error('Cin7 repeated a results page; sync stopped to avoid an incomplete import.');
+    seenPages.add(fingerprint);
     all.push(...items);
-    if (items.length < safeRows) break;
 
-    if (startDate) {
-      const dated = items.map(cin7OrderDateForSyncV17).filter(Boolean);
-      if (dated.length && dated.every(d => d < startDate)) break;
-    }
+    // Do not infer ordering from a page: scan to the actual end of Cin7 results.
 
     page++;
     await sleep(350);
@@ -1263,7 +1263,8 @@ function cin7OrderDateForSyncV17(order) {
     'CreatedDate', 'createdDate', 'CreatedAt', 'createdAt',
     'Date', 'date', 'OrderDate', 'orderDate'
   ]);
-  const d = new Date(raw || 0);
+  if (!raw) return null;
+  const d = new Date(raw);
   return Number.isFinite(d.getTime()) ? d : null;
 }
 
@@ -1312,18 +1313,18 @@ function operationsRowsMatchingCin7V25(existingRows, cin7Order) {
     const sameImportedId = cin7Id
       && String(row?.external_source || '') === 'cin7_sales_orders'
       && String(row?.external_id || '').trim() === cin7Id;
-    if (sameImportedId) return true;
+    if (sameImportedId || (cin7Id && String(row?.cin7_order_id || '').trim() === cin7Id)) return true;
     return operationsReferenceKeysV25(row).some(key => refKeys.has(key));
   });
 }
 
 async function fetchOperationsOrdersV25(token) {
-  const pageSize = 1000;
+  const pageSize = 200;
   const allRows = [];
 
   for (let offset = 0; ; offset += pageSize) {
     const page = await supabaseRest(
-      `orders?select=*&limit=${pageSize}&offset=${offset}`,
+      `orders?select=*&order=id.asc&limit=${pageSize}&offset=${offset}`,
       { method: 'GET' },
       token
     );
@@ -1333,6 +1334,33 @@ async function fetchOperationsOrdersV25(token) {
   }
 
   return allRows;
+}
+
+// Complete external identifiers only; preserve Operations references and workflow data.
+function cin7IdentityPatchV33(row, order) {
+  const id = String(pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId','OrderId','orderId']) || '').trim();
+  const linkedId = String(row?.cin7_order_id || '').trim();
+  if (!id || (linkedId && linkedId !== id)) return { conflict: true, patch: {} };
+  const importedId = row?.external_source === 'cin7_sales_orders' ? String(row.external_id || '').trim() : '';
+  if (importedId && importedId !== id) return { conflict: true, patch: {} };
+  const code = cleanText(pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']), 160);
+  const reference = cin7RefValueV14(order);
+  const patch = {};
+  if (linkedId !== id) patch.cin7_order_id = id;
+  if (code && String(row?.cin7_order_number || '') !== code) patch.cin7_order_number = code;
+  if (reference && String(row?.cin7_reference || '') !== reference) patch.cin7_reference = reference;
+  return { conflict: false, patch };
+}
+async function linkExistingCin7OrderV33(row, order, token) {
+  const result = cin7IdentityPatchV33(row, order);
+  if (result.conflict || !row?.id || !Object.keys(result.patch).length) return { updated: 0, conflict: result.conflict };
+  // Guard against another writer assigning a different Cin7 order during the sync.
+  const guard = row.cin7_order_id == null ? '&cin7_order_id=is.null' : '&cin7_order_id=eq.' + encodeURIComponent(String(row.cin7_order_id));
+  const saved = await supabaseRest('orders?id=eq.' + encodeURIComponent(row.id) + guard,
+    { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(result.patch) }, token);
+  if (!Array.isArray(saved) || saved.length !== 1) throw new Error('Cin7 link changed during sync; refresh and retry.');
+  Object.assign(row, result.patch);
+  return { updated: 1, conflict: false };
 }
 
 async function patchOperationsOrderCancelledV25(row, token) {
@@ -1414,11 +1442,18 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     // business reference but not necessarily the same external ID. Compare the
     // normalized reference before inserting to prevent a second Operations row.
     let matchedExistingByReferenceV25 = 0;
-    const newActiveCin7OrdersV25 = activeCin7OrdersV25.filter(order => {
+    const newActiveCin7OrdersV25 = [];
+    let linkedExistingV33 = 0, identityConflictsV33 = 0;
+    for (const order of activeCin7OrdersV25) {
       const matches = operationsRowsMatchingCin7V25(existingOperationsRowsV25, order);
-      if (matches.length) matchedExistingByReferenceV25 += 1;
-      return matches.length === 0;
-    });
+      if (!matches.length) { newActiveCin7OrdersV25.push(order); continue; }
+      matchedExistingByReferenceV25 += 1;
+      for (const row of matches) {
+        const link = await linkExistingCin7OrderV33(row, order, token);
+        linkedExistingV33 += link.updated;
+        if (link.conflict) identityConflictsV33 += 1;
+      }
+    }
 
     const normalized = newActiveCin7OrdersV25
       .map(order => normalizeCin7SalesOrderForOperations(order, adminUser))
@@ -1440,6 +1475,8 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         skipped_void: voidOrdersV25.length,
         cancelled_from_void: cancelledFromVoidV25,
         matched_existing_by_reference: matchedExistingByReferenceV25,
+        linked_existing: linkedExistingV33,
+        identity_conflicts: identityConflictsV33,
         message: voidOrdersV25.length
           ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
           : 'No new Cin7 sales orders found to import.',
@@ -1474,6 +1511,8 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       imported: insertedRows.length,
       skipped_existing: Math.max(0, normalized.length - insertedRows.length) + matchedExistingByReferenceV25,
       matched_existing_by_reference: matchedExistingByReferenceV25,
+        linked_existing: linkedExistingV33,
+        identity_conflicts: identityConflictsV33,
       skipped_void: voidOrdersV25.length,
       cancelled_from_void: cancelledFromVoidV25,
       source: 'cin7_sales_orders',
@@ -2220,7 +2259,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v30 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v33 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2368,17 +2407,25 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
 
     if (existingMatchesV25.length) {
       const existing = existingMatchesV25[0];
+      let linkedExistingV33 = 0, identityConflictsV33 = 0;
+      for (const row of existingMatchesV25) {
+        const link = await linkExistingCin7OrderV33(row, found.order, token);
+        linkedExistingV33 += link.updated;
+        if (link.conflict) identityConflictsV33 += 1;
+      }
       return res.json({
         success: true,
         ref,
         found: true,
         imported: 0,
         skipped_existing: 1,
+        linked_existing: linkedExistingV33,
+        identity_conflicts: identityConflictsV33,
         matched_existing_by_reference: 1,
         search_method: found.method,
         scanned_pages: found.scanned_pages,
         scanned_records: found.scanned_records,
-        message: `Cin7 Ref ${ref} already exists in Operations under the same normalized reference. No duplicate was created.`,
+        message: `Cin7 Ref ${ref} already exists in Operations. Cin7 identifiers were checked; ${linkedExistingV33} record(s) linked, ${identityConflictsV33} conflict(s). No duplicate was created.`,
         order: {
           id: existing.id,
           order_number: existing.order_number,
@@ -2455,6 +2502,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  cin7IdentityPatchV33,
   app,
   cin7DocumentStatusV25,
   cin7StageV25,
