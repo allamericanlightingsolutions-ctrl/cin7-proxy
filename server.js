@@ -1,4 +1,5 @@
 const express = require('express');
+const {makeStatement}=require('./invoice-statement');
 const fetch = require('node-fetch');
 const cors = require('cors');
 const {AALS_BRANCH,evaluateInventory,unavailable,inventoryNotes,needsInitialInventory,isCatalog,initialStatus,canRecheck}=require('./inventory-rules');
@@ -1527,6 +1528,31 @@ async function reconcileVoidCin7OrdersV25(voidOrders, existingRows, token) {
 
 // ─── Import Cin7 Sales Orders into Operations Portal ─────────────────────────
 
+
+// Read-only statement: fresh Cin7 invoices, joined to RLS-visible catalog orders.
+async function fetchInvoiceOrdersV38(from,to){
+ const end=new Date(to+'T00:00:00Z');end.setUTCDate(end.getUTCDate()+1);
+ const where="InvoiceDate>='"+from+"T00:00:00Z' AND InvoiceDate<'"+end.toISOString()+"'";
+ const all=[],seen=new Set();
+ for(let page=1;;page++){
+  const data=await cin7Fetch(CIN7_BASE_URL+'/SalesOrders?rows=250&page='+page+'&where='+encodeURIComponent(where));
+  const rows=normalizeCin7OrderList(data);if(!rows.length)break;
+  const key=JSON.stringify(rows.map(x=>pickFirst(x,['Id','id','ID'])));if(seen.has(key))throw new Error('Cin7 repeated an invoice results page. No statement was exported.');seen.add(key);all.push(...rows);await sleep(1050);
+ }
+ return all;
+}
+app.post('/api/bbw-invoice-statement',async(req,res)=>{
+ try{
+  const user=await verifyCatalogUser(req);
+  if(!['c.caslin@allamericanlightingsolutions.com','c.caslin@allamericanfacilities.com'].includes(user.email))await verifyAdmin(req);
+  const from=String(req.body?.from||''),to=String(req.body?.to||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||!Number.isFinite(Date.parse(from))||!Number.isFinite(Date.parse(to))||from>to)return res.status(400).json({success:false,error:'Select a valid invoice date range.'});
+  const token=getAuthToken(req);
+  const visible=await fetchOperationsOrdersV25(token);
+  const invoices=await fetchInvoiceOrdersV38(from,to);
+  res.json({success:true,from,to,date_basis:'Cin7 invoice date (UTC)',checked_at:new Date().toISOString(),...makeStatement(invoices,visible,from,to)});
+ }catch(error){res.status(500).json({success:false,error:error.message});}
+});
 app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
   try {
     const adminUser = await verifyAdmin(req);
@@ -2387,7 +2413,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v37 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v38 running ✅', timestamp: new Date().toISOString() });
 });
 
 
