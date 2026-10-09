@@ -1707,6 +1707,7 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
     const { order } = req.body || {};
 
     if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    if (order.spr_active_request || (Array.isArray(order.items) && order.items.some(item => item.spr_request_id))) return res.status(400).json({ success:false,error:'This order is managed by its Catalog product request. Use Check linked order / synchronization there to avoid duplicates.' });
     if (order.quote_number && !order.order_number) {
       return res.status(400).json({ success: false, error: 'Only catalog orders can be sent to Cin7.' });
     }
@@ -1770,6 +1771,7 @@ app.post('/api/send-order-to-cin7', async (req, res) => {
     const { order } = req.body;
 
     if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    if (order.spr_active_request || (Array.isArray(order.items) && order.items.some(item => item.spr_request_id))) return res.status(400).json({ success:false,error:'This order is managed by its Catalog product request. Use Check linked order / synchronization there to avoid duplicates.' });
     if (String(order.status || '').toLowerCase() !== 'approved') {
       return res.status(400).json({ success: false, error: 'Only approved orders can be sent to Cin7.' });
     }
@@ -2413,7 +2415,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v38 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v39 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2680,6 +2682,9 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// v39: Catalog-only special requests; stored, exact identities and idempotent writes.
+require('./catalog-special-request').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,normalizeCin7OrderList,buildCin7SalesOrder,applyApprovedInventoryV37});
 
 if (require.main === module) {
   app.listen(PORT, () => {
