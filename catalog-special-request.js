@@ -1,4 +1,5 @@
 'use strict';
+const tapestryRouting=require('./tapestry-routing');
 
 const txt = value => String(value == null ? '' : value).trim();
 function responseRows(request, input) {
@@ -76,6 +77,7 @@ function install(app, deps) {
     const exact = (values || []).filter(o => [o.order_number,o.reference,o.cin7_order_number].some(v => txt(v) === ref));
     if (exact.length !== 1 || !exact[0].cin7_order_id) throw new Error('Enter the exact number of one existing, synchronized Catalog order.');
     const target=exact[0];
+    if ((target.catalog_client||'bbw')!==(request.catalog_client||'bbw'))throw new Error('The existing order belongs to another catalog.');
     if (target.user_id !== request.user_id || txt(target.items?.[0]?.store_num) !== txt(request.items?.[0]?.store_num)) throw new Error('The order must belong to this requester and store.');
     if (txt(target.customer_po || target.work_order_number || target.items?.[0]?.work_order || target.items?.[0]?.customer_po) !== txt(request.spr_wo)) throw new Error('WO does not match the existing order.');
     const live = await readLive(target.cin7_order_id);
@@ -97,6 +99,7 @@ function install(app, deps) {
       const complete=rows.every(row => row.code && row.description);
       if (!request.spr_order_id) {
         if (complete) {
+          await tapestryRouting.prepare(request,supabaseRest,token,'quotes');
           rows=validateExactProducts(rows,(await fetchAllPagesSafe('products','')).map(normalizeCin7Product));
           if (request.spr_destination==='existing') await findTarget(request,token);
         }
@@ -105,6 +108,7 @@ function install(app, deps) {
         request=saved.request;order=saved.order;
       }
       linked=true;
+      order=await tapestryRouting.prepare(order,supabaseRest,token);
       if (request.spr_sync_state==='sent') return res.json({success:true,complete:true,order,message:'This request is already linked to its sales order.'});
       const claim=await rpc('catalog_spr_sync_v263',{p_request_id:requestId,p_action:'claim'},token);
       let live;

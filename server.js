@@ -539,7 +539,9 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
+const tapestryRouting = require('./tapestry-routing');
 function buildCin7SalesOrder(order, adminUser) {
+  if(tapestryRouting.isTapestry(order))return tapestryRouting.build(order,adminUser);
   const first = getFirstItem(order);
   const orderNumber = cleanText(order.order_number || order.quote_number || `AALS-${Date.now()}`, 30);
   const storeNum = cleanText(first.store_num || '');
@@ -1729,7 +1731,9 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       user_email: orderEmail || tokenEmail
     };
 
-    const salesOrder = buildCin7SalesOrder(orderForCin7, catalogUser);
+    const preparedOrder = await tapestryRouting.prepare(orderForCin7,supabaseRest,getAuthToken(req));
+    if(tapestryRouting.isTapestry(preparedOrder) && preparedOrder.cin7_order_id)throw new Error('This Tapestry order is already linked to Cin7. Refresh Operations instead of sending it again.');
+    const salesOrder = buildCin7SalesOrder(preparedOrder, catalogUser);
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
 
     const cin7Response = await cin7Fetch(endpoint, {
@@ -2003,7 +2007,7 @@ function requesterEmailV27(record) {
 
 function specialRequestUpdateHtmlV27({ record, eventType, note, fileName, actorEmail }) {
   const reference = specialRequestReferenceV27(record);
-  const catalogUrl = String(process.env.CATALOG_URL || 'https://aals-catalog.netlify.app/').trim();
+  const catalogUrl = String(tapestryRouting.isTapestry(record) ? (process.env.TAPESTRY_CATALOG_URL || 'https://aalsoperations.com/') : (process.env.CATALOG_URL || 'https://aals-catalog.netlify.app/')).trim();
   const isPdf = eventType === 'pdf';
   const headline = isPdf ? 'A new PDF is available' : 'AALS posted a new response';
   const detail = isPdf
@@ -2112,7 +2116,7 @@ app.post('/api/send-catalog-confirmation-email', async (req, res) => {
 
     const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
     const adminEmail = process.env.ADMIN_EMAIL || 'orders2@aalsusa.com';
-    const extraAdmins = String(process.env.CATALOG_CONFIRMATION_CC || '')
+    const extraAdmins = String(tapestryRouting.isTapestry(record) ? (process.env.TAPESTRY_CONFIRMATION_CC || '') : (process.env.CATALOG_CONFIRMATION_CC || ''))
       .split(',')
       .map(e => e.trim())
       .filter(Boolean)
@@ -2133,7 +2137,7 @@ app.post('/api/send-catalog-confirmation-email', async (req, res) => {
       html: htmlBody
     });
 
-    const adminRecipients = [adminEmail, ...extraAdmins].filter(Boolean).filter(isValidEmail);
+    const adminRecipients = [tapestryRouting.isTapestry(record)?process.env.TAPESTRY_TEAM_EMAIL:adminEmail, ...extraAdmins].filter(Boolean).filter(isValidEmail);
     let adminResult = null;
     if (adminRecipients.length) {
       adminResult = await sendResendEmailV18({
@@ -2685,6 +2689,7 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
 
 // v39: Catalog-only special requests; stored, exact identities and idempotent writes.
 require('./catalog-special-request').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,normalizeCin7OrderList,buildCin7SalesOrder,applyApprovedInventoryV37});
+require('./tapestry-quotes').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,buildCin7SalesOrder});
 
 if (require.main === module) {
   app.listen(PORT, () => {
