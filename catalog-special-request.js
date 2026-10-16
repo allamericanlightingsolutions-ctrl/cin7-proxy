@@ -68,6 +68,7 @@ function install(app, deps) {
     const escaped = txt(ref).replace(/'/g, "''");
     const raw = await cin7Fetch(CIN7_BASE_URL + '/SalesOrders?rows=250&page=1&where=' + encodeURIComponent("reference='" + escaped + "'"));
     const list = normalizeCin7OrderList(raw).filter(order => exactReferences(order, ref));
+    if (list.length >= 250) throw new Error('Exact order lookup is incomplete; manual review is required.');
     if (list.length > 1) throw new Error('More than one exact Cin7 reference exists. Manual review is required.');
     return list[0] ? readLive(salesId(list[0])) : null;
   };
@@ -85,7 +86,7 @@ function install(app, deps) {
     return target;
   };
 
-  app.post('/api/complete-catalog-special-request', async (req,res) => {
+  const completeCatalogSalesOrder = async (req,res) => {
     let requestId,token,linked=false;
     try {
       const user = await verifyCatalogUser(req);
@@ -95,6 +96,7 @@ function install(app, deps) {
       if (!/^[0-9a-f-]{36}$/i.test(requestId)) throw new Error('Invalid request identifier.');
       let saved=await rpc('catalog_spr_order_v263',{p_request_id:requestId},token);
       let request=saved.request,order=saved.order;
+      if (!request.spr_order_id && (request.spr_document_type==='quote' || request.spr_cin7_quote_id || ['sending','sent','review_required'].includes(request.spr_quote_state))) throw new Error('An existing or pending Cin7 Quote must be reviewed before creating a Sales Order. No second document was created.');
       let rows=responseRows(request,request.spr_order_id ? request.spr_responses : req.body?.lines);
       const complete=rows.every(row => row.code && row.description);
       if (!request.spr_order_id) {
@@ -136,12 +138,23 @@ function install(app, deps) {
         live=await exactLookup(order.order_number);
         if (!live) {
           const payload=attachMarkers(buildCin7SalesOrder(order,user),request);
+          // Request submission authorizes the sale. Use SalesOrders, never Quotes.
+          payload.stage='New';payload.isApproved=true;payload.customerOrderNo=request.spr_wo;
+          payload.internalComments='Sales Order from catalog request '+request.quote_number+'. Authorized by requester submission. WO '+request.spr_wo+'. '+txt(order.notes);
           const result=unpack(await cin7Fetch(CIN7_BASE_URL + '/SalesOrders?loadboms=false',{method:'POST',body:JSON.stringify([payload])}));
+          if(result?.success===false||result?.Success===false)throw new Error('Cin7 Sales Order was not accepted: '+JSON.stringify(result.errors||result.Errors||[]));
           const id=salesId(result);
           live=id ? await readLive(id) : await exactLookup(order.order_number);
         }
       }
       if (!live || !confirmedLines(live,request,rows)) throw new Error('Cin7 has not confirmed every requested product. The request is linked and requires review; it will not create another order.');
+      if (tapestryRouting.isTapestry(order) && Number(live.memberId??live.MemberId)!==Number(order.items[0].tapestry_cin7_member_id)) throw new Error('Cin7 customer does not match the verified Tapestry store.');
+      if (!tapestryRouting.isTapestry(order) && txt(live.company||live.Company)!==txt(buildCin7SalesOrder(order,user).company)) throw new Error('Cin7 customer does not match the BBW customer configuration.');
+      if (request.spr_destination!=='existing' && txt(live.reference||live.Reference)!==txt(order.order_number)) throw new Error('Cin7 Sales Order reference does not match the linked portal order.');
+      if (request.spr_document_type==='sales_order' && request.spr_destination!=='existing') {
+        if(String(live.isApproved??live.IsApproved).toLowerCase()!=='true')throw new Error('Cin7 has not confirmed approval of this Sales Order. Review the same order; no duplicate was created.');
+        if(txt(live.customerOrderNo||live.CustomerOrderNo)!==txt(request.spr_wo))throw new Error('Cin7 work order does not match this request.');
+      }
       order=await rpc('catalog_spr_link_v263',{p_request_id:requestId,p_cin7_id:salesId(live),p_cin7_number:txt(live.code || live.Code || live.reference || live.Reference)},token);
       let inventory;
       try { inventory=await applyApprovedInventoryV37(order,token); } catch(error) { inventory={status:'waiting_materials',message:'Stock verification is pending: '+error.message}; }
@@ -153,6 +166,10 @@ function install(app, deps) {
       }
       return res.status(400).json({success:false,linked,error:error.message});
     }
-  });
+  };
+  app.post('/api/complete-catalog-special-request',completeCatalogSalesOrder);
+  app.post('/api/complete-catalog-sales-order',completeCatalogSalesOrder);
+  return completeCatalogSalesOrder;
 }
 module.exports={install,responseRows,validateExactProducts,assertOpen,confirmedLines,attachMarkers,exactReferences};
+

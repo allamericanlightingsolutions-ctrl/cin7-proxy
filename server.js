@@ -2688,8 +2688,8 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
 });
 
 // v39: Catalog-only special requests; stored, exact identities and idempotent writes.
-require('./catalog-special-request').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,normalizeCin7OrderList,buildCin7SalesOrder,applyApprovedInventoryV37});
-require('./tapestry-quotes').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,buildCin7SalesOrder});
+const completeCatalogSalesOrder=require('./catalog-special-request').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,normalizeCin7OrderList,buildCin7SalesOrder,applyApprovedInventoryV37});
+require('./tapestry-quotes').install(app,{completeCatalogSalesOrder,verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,buildCin7SalesOrder});
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -2765,3 +2765,4 @@ module.exports = {
 // Default window is current-year June and July:
 // start = YYYY-06-01, end exclusive = YYYY-08-01.
 // Existing Operations changes are still preserved because v16 ignore-duplicates remains active.
+

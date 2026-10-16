@@ -41,6 +41,7 @@ function install(app,deps){
    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId))throw Error('Invalid request identifier.');
    if(await rpc('catalog_spr_staff_v263',{},token)!==true)return res.status(403).json({success:false,error:'Only authorized AALS staff can answer requests.'});
    let request=(await rpc('catalog_quote_read_v2',{p_request_id:requestId},token)).request;
+   if(request.spr_document_type==='sales_order'&&deps.completeCatalogSalesOrder)return deps.completeCatalogSalesOrder(req,res);
    if(request.spr_order_id)throw Error('This request already has a sales order. It cannot automatically create a second document.');
    if(request.spr_document_type!=='quote')throw Error('This request has not been enabled for the quote workflow.');
    if(request.spr_cin7_quote_id)return res.json({success:true,complete:true,document_type:'quote',request,message:'Quote already created: '+(request.spr_cin7_quote_number||request.spr_cin7_quote_id)});
@@ -73,3 +74,4 @@ function install(app,deps){
  });
 }
 module.exports={install,quotePayload,verifyQuote};
+

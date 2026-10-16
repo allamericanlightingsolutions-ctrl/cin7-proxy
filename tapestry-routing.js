@@ -23,3 +23,4 @@ function build(order,user){
   return {reference:text(order.order_number),customerOrderNo:wo||text(order.order_number),memberId:member,company,firstName,lastName,email:text(order.user_email||user?.email),stage:'New',isApproved:false,deliveryCompany:text(first.store)||'Tapestry',deliveryFirstName:firstName,deliveryLastName:lastName,deliveryAddress1:text(first.store_address),deliveryCity:text(first.store_city),deliveryState:text(first.store_state),deliveryPostalCode:text(first.store_zip),deliveryCountry:text(first.store_country),billingCompany:company,billingEmail:text(order.user_email||user?.email),internalComments:'Created from Tapestry Catalog. Operations '+text(order.order_number)+'. Aqua Team. WO '+wo+'. '+text(order.notes),lineItems,createdDate:new Date().toISOString()};
 }
 module.exports={isTapestry,prepare,build};
+
