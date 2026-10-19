@@ -2007,27 +2007,22 @@ function requesterEmailV27(record) {
 
 function specialRequestUpdateHtmlV27({ record, eventType, note, fileName, actorEmail }) {
   const reference = specialRequestReferenceV27(record);
-  const catalogUrl = String(tapestryRouting.isTapestry(record) ? (process.env.TAPESTRY_CATALOG_URL || 'https://aalsoperations.com/') : (process.env.CATALOG_URL || 'https://aals-catalog.netlify.app/')).trim();
+  const operationsUrl = new URL('https://aalsoperations.com/portal');
+  operationsUrl.searchParams.set('request_id', String(record.id));
+  operationsUrl.searchParams.set('request_ref', reference);
   const isPdf = eventType === 'pdf';
-  const headline = isPdf ? 'A new PDF is available' : 'AALS posted a new response';
-  const detail = isPdf
-    ? `<p style="margin:14px 0;padding:12px 14px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:10px;"><b>Document:</b> ${safeEmailHtml(fileName || 'PDF document', 200)}</p>`
-    : `<div style="margin:14px 0;padding:12px 14px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:10px;"><b>AALS update:</b><br>${safeEmailHtml(note || 'A new update was added.', 1800).replace(/\n/g, '<br>')}</div>`;
-
   return `
     <div style="font-family:Segoe UI,Arial,sans-serif;color:#0B1F3A;line-height:1.5;max-width:680px;margin:auto;">
       <div style="border-bottom:4px solid #c8102e;padding-bottom:12px;margin-bottom:18px;">
-        <h2 style="margin:0;color:#0B1F3A;">${headline}</h2>
+        <h2 style="margin:0;color:#0B1F3A;">${isPdf ? 'A new document is available' : 'Your Special Product Request has an update'}</h2>
         <p style="margin:6px 0 0;color:#64748b;">Special Product Request ${safeEmailHtml(reference)}</p>
       </div>
       <p>Hello,</p>
-      <p>AALS has added ${isPdf ? 'a document' : 'a public response'} to your Special Product Request.</p>
-      ${detail}
-      <p style="margin:22px 0;">
-        <a href="${safeEmailHtml(catalogUrl, 500)}" style="display:inline-block;background:#0B1F3A;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:9px;">View My Special Requests</a>
-      </p>
-      <p style="color:#475569;">Sign in to the AALS Catalog and select <b>My Special Requests</b> to review the complete conversation${isPdf ? ' and securely download the PDF' : ''}.</p>
-      <p style="font-size:12px;color:#64748b;margin-top:22px;">This automatic email was generated from a public update posted by ${safeEmailHtml(actorEmail || 'AALS')}.</p>
+      <p>AALS has added ${isPdf ? 'a document' : 'a response'} to your Special Product Request.</p>
+      <p>Please open the request in the AALS Operations Portal to review the response${isPdf ? ' and securely download the document' : ''}, check its status, and continue the conversation.</p>
+      <p style="margin:22px 0;"><a href="${safeEmailHtml(operationsUrl.href, 1000)}" style="display:inline-block;background:#0B1F3A;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:9px;">View Request in Operations</a></p>
+      <p style="color:#475569;">Sign in with the account associated with this request. The catalog keeps your submission history for reference; responses and follow-up are handled in Operations.</p>
+      <p style="font-size:12px;color:#64748b;margin-top:22px;">This is an automated notification. Please do not reply to this email. For assistance, use the Operations Portal or contact Chris at <a href="mailto:c.caslin@allamericanlightingsolutions.com">c.caslin@allamericanlightingsolutions.com</a>.</p>
     </div>
   `;
 }
@@ -2765,4 +2760,5 @@ module.exports = {
 // Default window is current-year June and July:
 // start = YYYY-06-01, end exclusive = YYYY-08-01.
 // Existing Operations changes are still preserved because v16 ignore-duplicates remains active.
+
 
