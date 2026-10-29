@@ -2686,6 +2686,12 @@ app.post('/api/import-cin7-order-by-ref-to-operations', async (req, res) => {
 const completeCatalogSalesOrder=require('./catalog-special-request').install(app,{verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,normalizeCin7OrderList,buildCin7SalesOrder,applyApprovedInventoryV37});
 require('./tapestry-quotes').install(app,{completeCatalogSalesOrder,verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,buildCin7SalesOrder});
 
+// Shipping report endpoint: isolated from existing catalog/Cin7 routes.
+require('./automatic-shipping-reports').install(app, {
+  sendEmail: sendGmailSmtpEmailV19,
+  fetch
+});
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Proxy server running on port ${PORT}`);
