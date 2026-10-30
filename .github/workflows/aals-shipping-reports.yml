@@ -1,0 +1,19 @@
+name: AALS weekday shipping reports
+on:
+  schedule:
+    # Both EDT and EST hours. Server checks local time and skips the other hour.
+    - cron: '0 12,13,21,22 * * 1-5'
+  workflow_dispatch:
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request report (server enforces Florida time and idempotency)
+        env:
+          REPORT_SECRET: ${{ secrets.SHIPPING_REPORT_SECRET }}
+          REPORT_URL: ${{ secrets.SHIPPING_REPORT_URL }}
+        run: |
+          test -n "$REPORT_SECRET" && test -n "$REPORT_URL"
+          curl --fail-with-body --retry 2 --max-time 180 -X POST \
+            -H "x-report-secret: $REPORT_SECRET" \
+            "$REPORT_URL/api/automatic-shipping-report"
