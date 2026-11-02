@@ -1699,7 +1699,60 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
 
 
 
-// ─── v20 Send catalog-created order to Cin7 without requiring admin ──────────
+// ─── v40 Reliable, idempotent Catalog → Cin7 delivery ────────────────────────
+// The Catalog can safely retry a request after a timeout or a lost response.
+// Before creating anything, search Cin7 by the AALS business reference. When a
+// match already exists, return and persist that link instead of creating a
+// second Sales Order.
+async function findCatalogOrderInCin7V40(reference) {
+  const target = cleanText(reference, 120);
+  if (!target) return null;
+  const escaped = escapeCin7WhereValueV24(target);
+  const fields = ['Ref', 'Reference', 'CustomerReference', 'CustomerOrderNo', 'Code', 'OrderNumber'];
+
+  for (const field of fields) {
+    try {
+      const where = encodeURIComponent(`${field}='${escaped}'`);
+      const data = await cin7Fetch(`${CIN7_BASE_URL}/SalesOrders?rows=20&page=1&where=${where}`);
+      const exact = normalizeCin7OrderList(data).find(order => cin7OrderMatchesRefV24(order, target));
+      if (exact) return exact;
+    } catch (error) {
+      console.warn(`Catalog idempotency lookup failed for ${field}:`, error.message);
+    }
+    await sleep(100);
+  }
+  return null;
+}
+
+function catalogCin7ResultV40(order, status = 'sent_to_cin7_from_catalog') {
+  return {
+    cin7_order_id: String(pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId']) || ''),
+    cin7_order_number: String(pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','Ref','ref','Reference','reference']) || ''),
+    cin7_status: status,
+    cin7Response: order
+  };
+}
+
+async function persistCatalogCin7LinkV40(order, result, token) {
+  const id = String(order?.id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  const authorization = SUPABASE_SERVICE_ROLE_KEY || token;
+  await supabaseRest(`orders?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      cin7_status: result.cin7_status || 'sent_to_cin7_from_catalog',
+      cin7_order_id: String(result.cin7_order_id || ''),
+      cin7_order_number: String(result.cin7_order_number || ''),
+      cin7_sent_at: new Date().toISOString(),
+      cin7_error: null,
+      cin7_payload: result.payload || null,
+      cin7_response: result.cin7Response || null,
+      updated_at: new Date().toISOString()
+    })
+  }, authorization);
+}
+
+// ─── Send catalog-created order to Cin7 without requiring admin ──────────────
 // This endpoint is called by the Catalog right after saving the order in Supabase.
 // It verifies the logged-in Catalog user, then creates a Draft/New Sales Order in Cin7.
 // Quotes and Special Product Requests should NOT use this endpoint.
@@ -1720,9 +1773,14 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
     const orderEmail = String(order.user_email || order.created_by_email || '').trim().toLowerCase();
     const tokenEmail = String(catalogUser.email || '').trim().toLowerCase();
 
-    // User can send only their own catalog order unless the record has no email.
+    // Catalog users can send their own orders. Active AALS admins may recover a
+    // failed order for another user from the Catalog admin panel.
     if (orderEmail && tokenEmail && orderEmail !== tokenEmail) {
-      return res.status(403).json({ success: false, error: 'You can only send your own catalog orders to Cin7.' });
+      try {
+        await verifyAdmin(req);
+      } catch (_) {
+        return res.status(403).json({ success: false, error: 'You can only send your own catalog orders to Cin7.' });
+      }
     }
 
     const orderForCin7 = {
@@ -1730,6 +1788,23 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       status: order.status || 'pending_approval',
       user_email: orderEmail || tokenEmail
     };
+
+    const businessReference = cleanText(orderForCin7.order_number || orderForCin7.reference, 120);
+    if (!businessReference) {
+      return res.status(400).json({ success: false, error: 'The Catalog order is missing its AALS reference.' });
+    }
+
+    const existingCin7Order = await findCatalogOrderInCin7V40(businessReference);
+    if (existingCin7Order) {
+      const existingResult = {
+        success: true,
+        already_exists: true,
+        duplicate_prevented: true,
+        ...catalogCin7ResultV40(existingCin7Order, 'linked_to_existing_cin7_order')
+      };
+      await persistCatalogCin7LinkV40(orderForCin7, existingResult, getAuthToken(req));
+      return res.json(existingResult);
+    }
 
     const preparedOrder = await tapestryRouting.prepare(orderForCin7,supabaseRest,getAuthToken(req));
     if(tapestryRouting.isTapestry(preparedOrder) && preparedOrder.cin7_order_id)throw new Error('This Tapestry order is already linked to Cin7. Refresh Operations instead of sending it again.');
@@ -1753,14 +1828,16 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       });
     }
 
-    res.json({
+    const createdResult = {
       success: true,
       cin7_order_id: result.Id || result.id,
       cin7_order_number: result.Code || result.code || result.Reference || result.reference || result.Ref || result.ref || '',
       cin7_status: 'sent_to_cin7_from_catalog',
       cin7Response,
       payload: salesOrder
-    });
+    };
+    await persistCatalogCin7LinkV40(orderForCin7, createdResult, getAuthToken(req));
+    res.json(createdResult);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -2414,7 +2491,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v39 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v40 running ✅', timestamp: new Date().toISOString() });
 });
 
 
