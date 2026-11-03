@@ -400,6 +400,19 @@ async function verifyAdmin(req) {
   throw new Error(`Only AALS admins can send orders to Cin7. Current user: ${email}`);
 }
 
+async function verifySignedInUserV41(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) throw new Error('Missing Authorization token.');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('Missing Supabase environment variables.');
+  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` }
+  });
+  const user = await userRes.json().catch(() => null);
+  if (!userRes.ok || !user?.email) throw new Error('Could not verify Supabase user.');
+  return { ...user, email: String(user.email).trim().toLowerCase() };
+}
+
 
 function cleanText(value, max = 250) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -2491,7 +2504,7 @@ app.post('/api/sync-cin7-purchase-orders-to-operations', async (req, res) => {
 
 
 app.get('/', (req, res) => {
-  res.json({ status: 'AALS Cin7 Proxy v40 running ✅', timestamp: new Date().toISOString() });
+  res.json({ status: 'AALS Cin7 Proxy v41 running ✅', timestamp: new Date().toISOString() });
 });
 
 
@@ -2528,6 +2541,78 @@ app.post('/api/audit-cin7-order-numbers',async(req,res)=>{
       })}));
     res.json({success:true,read_only:true,start_date:start.toISOString().slice(0,10),fetched:orders.length,results});
   }catch(error){res.status(500).json({success:false,error:error.message});}
+});
+
+// v41: Live Drawer Slides work-order feed for Operations Purchasing & Inventory.
+// Cin7 remains the source of truth. Portal edits are stored separately in Supabase.
+const DRAWER_SLIDE_CODES_V41 = new Set([
+  'KA04932-012-02500','4932','KA04932-014-02500','8810B 14','FR5609',
+  'D80616E-ZP-W','KA04932-016-02500','8810B 16','5005','KA04932-018-02500',
+  '4620-20','KA04932-022-02500','5507','FR5210.SMT','KA4620-24-2500',
+  'KA04932-024-02500','KA04620-024-02500','USF-NJ81A02-26','K716S3Y3'
+].map(value => value.toUpperCase()));
+
+function drawerSlideWorkOrderV41(order) {
+  const direct = cleanText(pickFirst(order, [
+    'WorkOrder','workOrder','WorkOrderNumber','workOrderNumber','CustomerPO','customerPO',
+    'CustomerPONumber','customerPONumber','PONumber','poNumber','PO','CustomerReference',
+    'customerReference','Reference','reference','Ref','ref'
+  ]), 120);
+  if (direct) return direct;
+  const notes = String(pickFirst(order, ['InternalComments','internalComments','Notes','notes','Comments','comments']) || '');
+  const match = notes.match(/(?:work\s*order|wo)\s*[:#-]?\s*([A-Z0-9-]+)/i);
+  return match ? cleanText(match[1], 120) : '';
+}
+
+function drawerSlideLineV41(line) {
+  const raw = line?.cin7_line_payload || {};
+  const rawItemCode = cleanText(line?.cin7_code || line?.part, 100);
+  const itemCode = /^CIN7-LINE-/i.test(rawItemCode) ? '' : rawItemCode;
+  const description = cleanText(line?.description, 500);
+  const normalizedCode = itemCode.toUpperCase();
+  if (!DRAWER_SLIDE_CODES_V41.has(normalizedCode) && !/drawer\s*slide/i.test(description)) return null;
+  const ordered = Number(pickFirst(raw, ['Qty','qty','Quantity','quantity','OrderedQty','orderedQty']) ?? line?.order_qty ?? 0) || 0;
+  const shipped = Number(pickFirst(raw, ['QtyShipped','qtyShipped','ShippedQty','shippedQty','FulfilledQty','fulfilledQty']) ?? 0) || 0;
+  const remainingRaw = pickFirst(raw, ['QtyRemaining','qtyRemaining','RemainingQty','remainingQty','OutstandingQty','outstandingQty']);
+  const quantity = Math.max(0, remainingRaw === undefined || remainingRaw === null || remainingRaw === '' ? ordered - shipped : Number(remainingRaw) || 0);
+  return { item_code: itemCode, description, ordered_quantity: ordered, shipped_quantity: shipped, quantity };
+}
+
+app.get('/api/drawer-slides-work-orders', async (req, res) => {
+  try {
+    const user = await verifySignedInUserV41(req);
+    const orders = await fetchCin7SalesOrdersForImport({ rows: 250 });
+    const rows = [];
+    for (const order of orders) {
+      if (cin7IsVoidOrderV25(order)) continue;
+      const orderState = `${cin7DocumentStatusV25(order)} ${cin7StageV25(order)}`.trim().toLowerCase();
+      if (/\b(cancelled|canceled|closed|completed|delivered|dispatched|fulfilled|shipped|void|voided)\b/.test(orderState)) continue;
+      const orderId = String(pickFirst(order, ['Id','ID','id','SalesOrderID','salesOrderId','OrderId','orderId']) || '');
+      const orderNumber = cleanText(pickFirst(order, ['Code','code','OrderNumber','orderNumber','Number','number','SalesOrderNumber','salesOrderNumber']), 120);
+      const workOrder = drawerSlideWorkOrderV41(order);
+      const status = cin7StageV25(order) || cin7DocumentStatusV25(order) || '';
+      const updatedAt = pickFirst(order, ['ModifiedDate','modifiedDate','UpdatedAt','updatedAt','LastModifiedDate','lastModifiedDate']) || null;
+      normalizeCin7LineItems(order).forEach((line, index) => {
+        const match = drawerSlideLineV41(line);
+        if (!match || match.quantity <= 0) return;
+        const lineId = cleanText(pickFirst(line.cin7_line_payload || {}, ['Id','ID','id','LineId','lineId','OrderLineId','orderLineId']), 120) || String(index + 1);
+        rows.push({
+          stable_key: `cin7:${orderId || orderNumber}:${lineId}`,
+          cin7_order_id: orderId,
+          cin7_order_number: orderNumber,
+          line_id: lineId,
+          work_order: workOrder,
+          status: cleanText(status, 100),
+          updated_at: updatedAt,
+          ...match
+        });
+      });
+    }
+    rows.sort((a,b) => String(a.work_order).localeCompare(String(b.work_order), undefined, { numeric:true }) || a.description.localeCompare(b.description));
+    res.json({ success:true, source:'cin7_live_sales_orders', fetched_orders:orders.length, rows, synced_at:new Date().toISOString(), requested_by:user.email });
+  } catch (error) {
+    res.status(/Authorization|verify Supabase user/i.test(error.message) ? 401 : 500).json({ success:false, error:error.message });
+  }
 });
 
 app.get('/api/cin7-sync-window', (req, res) => {
