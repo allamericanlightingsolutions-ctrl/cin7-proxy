@@ -7,7 +7,7 @@ const id=x=>txt(x?.id||x?.Id);
 function quotePayload(request,prepared,user,buildBBW){
  const rows=request.spr_responses;
  const items=prepared.items.map((item,i)=>({...item,part:rows[i].code,cin7_code:rows[i].code,description:rows[i].description}));
- const record={...prepared,order_number:request.quote_number,items};
+ const record=routing.isTapestry(prepared)?routing.derive(prepared,{order_number:request.quote_number,items}):{...prepared,order_number:request.quote_number,items};
  const payload=routing.isTapestry(record)?routing.build(record,user):buildBBW(record,user);
  payload.isApproved=false;payload.stage='New';payload.customerOrderNo=request.spr_wo||request.quote_number;
  payload.internalComments=(routing.isTapestry(record)?'Tapestry · Aqua Team':'BBW Corporate · Gold Team')+' product request '+request.quote_number+'. Quote only; approval is required before any sale. '+txt(request.notes);
@@ -15,7 +15,7 @@ function quotePayload(request,prepared,user,buildBBW){
 }
 function verifyQuote(live,request,rows,prepared,payload){
  if(!live||!id(live)||txt(live.reference||live.Reference)!==txt(request.quote_number)||!confirmedLines(live,request,rows))throw Error('Cin7 has not confirmed the exact quote reference and every product row. Review the existing quote before retrying.');
- if(routing.isTapestry(prepared)&&Number(live.memberId??live.MemberId)!==Number(prepared.items[0].tapestry_cin7_member_id))throw Error('Cin7 quote customer does not match the verified Tapestry store.');
+ if(routing.isTapestry(prepared))routing.assertCustomer(live,prepared);
  if(!routing.isTapestry(prepared)&&txt(live.company||live.Company)!==txt(payload.company))throw Error('Cin7 Quote customer does not match the BBW customer configuration.');
  if(live.isApproved===true||live.IsApproved===true)throw Error('The Quote is already approved; review its current status in Cin7.');
  return live;
@@ -50,7 +50,7 @@ function install(app,deps){
    if(!request.spr_quote_state||request.spr_quote_state==='draft')request=await rpc('catalog_quote_write_v2',{p_request_id:requestId,p_action:'save',p_lines:rows},token);
    if(!complete)return res.json({success:true,complete:false,request,message:'Responses saved. Complete every row to create a Quote.'});
    rows=validateExactProducts(rows,(await fetchAllPagesSafe('products','')).map(normalizeCin7Product));
-   const prepared=await routing.prepare(request,supabaseRest,token,'quotes');
+   const prepared=await routing.prepare(request,supabaseRest,token,'quotes',{cin7Fetch,CIN7_BASE_URL});
    const payload=quotePayload(request,prepared,user,buildCin7SalesOrder);
    // Check the durable response snapshot under a row lock before any write to Cin7.
    const claim=await rpc('catalog_quote_write_v2',{p_request_id:requestId,p_action:'claim',p_lines:rows},token);
@@ -74,4 +74,5 @@ function install(app,deps){
  });
 }
 module.exports={install,quotePayload,verifyQuote};
+
 

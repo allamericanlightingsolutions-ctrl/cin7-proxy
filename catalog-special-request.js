@@ -101,7 +101,7 @@ function install(app, deps) {
       const complete=rows.every(row => row.code && row.description);
       if (!request.spr_order_id) {
         if (complete) {
-          await tapestryRouting.prepare(request,supabaseRest,token,'quotes');
+          await tapestryRouting.prepare(request,supabaseRest,token,'quotes',{cin7Fetch,CIN7_BASE_URL});
           rows=validateExactProducts(rows,(await fetchAllPagesSafe('products','')).map(normalizeCin7Product));
           if (request.spr_destination==='existing') await findTarget(request,token);
         }
@@ -110,7 +110,7 @@ function install(app, deps) {
         request=saved.request;order=saved.order;
       }
       linked=true;
-      order=await tapestryRouting.prepare(order,supabaseRest,token);
+      order=await tapestryRouting.prepare(order,supabaseRest,token,'orders',{cin7Fetch,CIN7_BASE_URL});
       if (request.spr_sync_state==='sent') return res.json({success:true,complete:true,order,message:'This request is already linked to its sales order.'});
       const claim=await rpc('catalog_spr_sync_v263',{p_request_id:requestId,p_action:'claim'},token);
       let live;
@@ -126,7 +126,8 @@ function install(app, deps) {
           assertOpen(live);
           const newItems=(order.items || []).filter(item => txt(item.spr_request_id)===requestId);
           if (newItems.length!==rows.length) throw new Error('Linked product rows do not match the request.');
-          const added=attachMarkers(buildCin7SalesOrder({...order,items:newItems},user),request);
+          const selected=tapestryRouting.isTapestry(order)?tapestryRouting.derive(order,{items:newItems}):{...order,items:newItems};
+          const added=attachMarkers(buildCin7SalesOrder(selected,user),request);
           const old=live.lineItems || live.LineItems;
           const last=Math.max(0,...old.map(line => Number(line.sort || line.Sort)||0));
           added.lineItems.forEach((line,index) => {line.sort=last+(index+1)*10;});
@@ -148,7 +149,7 @@ function install(app, deps) {
         }
       }
       if (!live || !confirmedLines(live,request,rows)) throw new Error('Cin7 has not confirmed every requested product. The request is linked and requires review; it will not create another order.');
-      if (tapestryRouting.isTapestry(order) && Number(live.memberId??live.MemberId)!==Number(order.items[0].tapestry_cin7_member_id)) throw new Error('Cin7 customer does not match the verified Tapestry store.');
+      if (tapestryRouting.isTapestry(order)) tapestryRouting.assertCustomer(live,order);
       if (!tapestryRouting.isTapestry(order) && txt(live.company||live.Company)!==txt(buildCin7SalesOrder(order,user).company)) throw new Error('Cin7 customer does not match the BBW customer configuration.');
       if (request.spr_destination!=='existing' && txt(live.reference||live.Reference)!==txt(order.order_number)) throw new Error('Cin7 Sales Order reference does not match the linked portal order.');
       if (request.spr_document_type==='sales_order' && request.spr_destination!=='existing') {
@@ -172,4 +173,5 @@ function install(app, deps) {
   return completeCatalogSalesOrder;
 }
 module.exports={install,responseRows,validateExactProducts,assertOpen,confirmedLines,attachMarkers,exactReferences};
+
 

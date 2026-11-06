@@ -1,0 +1,5752 @@
+{
+  "COACH-1100": {
+    "n": "COACH-1100",
+    "brand": "Coach",
+    "officialNumber": "1100",
+    "a1": "7014 E Camelback Rd, Ste 1136",
+    "ca": "Scottsdale",
+    "sa": "AZ",
+    "z": "85251",
+    "co": "US"
+  },
+  "COACH-1101": {
+    "n": "COACH-1101",
+    "brand": "Coach",
+    "officialNumber": "1101",
+    "a1": "3111 West Chandler Blvd., Space 1052",
+    "ca": "Chandler",
+    "sa": "AZ",
+    "z": "85226",
+    "co": "US"
+  },
+  "COACH-1102": {
+    "n": "COACH-1102",
+    "brand": "Coach",
+    "officialNumber": "1102",
+    "a1": "2905 E. Skyline Drive, Suite 265",
+    "ca": "Tucson",
+    "sa": "AZ",
+    "z": "85718",
+    "co": "US"
+  },
+  "COACH-1104": {
+    "n": "COACH-1104",
+    "brand": "Coach",
+    "officialNumber": "1104",
+    "a1": "7700 W. Arrowhead Towne Center, Space #1088",
+    "ca": "Glendale",
+    "sa": "AZ",
+    "z": "85308",
+    "co": "US"
+  },
+  "COACH-1105": {
+    "n": "COACH-1105",
+    "brand": "Coach",
+    "officialNumber": "1105",
+    "a1": "2206 E. Williams Field Rd., Bldg 9, Suite 110",
+    "ca": "Gilbert",
+    "sa": "AZ",
+    "z": "85296",
+    "co": "US"
+  },
+  "COACH-1130": {
+    "n": "COACH-1130",
+    "brand": "Coach",
+    "officialNumber": "1130",
+    "a1": "320 W 5th Avenue, Space #306",
+    "ca": "Anchorage",
+    "sa": "AK",
+    "z": "99501",
+    "co": "US"
+  },
+  "COACH-1201": {
+    "n": "COACH-1201",
+    "brand": "Coach",
+    "officialNumber": "1201",
+    "a1": "8500 Beverly Blvd., Space 718",
+    "ca": "Los Angeles",
+    "sa": "CA",
+    "z": "90048",
+    "co": "US"
+  },
+  "COACH-1202": {
+    "n": "COACH-1202",
+    "brand": "Coach",
+    "officialNumber": "1202",
+    "a1": "1052 Brea Mall",
+    "ca": "Brea",
+    "sa": "CA",
+    "z": "92821",
+    "co": "US"
+  },
+  "COACH-1205": {
+    "n": "COACH-1205",
+    "brand": "Coach",
+    "officialNumber": "1205",
+    "a1": "7007 Friars Road - Suite 371",
+    "ca": "San Diego",
+    "sa": "CA",
+    "z": "92108",
+    "co": "US"
+  },
+  "COACH-1206": {
+    "n": "COACH-1206",
+    "brand": "Coach",
+    "officialNumber": "1206",
+    "a1": "2110 Glendale Galleria",
+    "ca": "Glendale",
+    "sa": "CA",
+    "z": "91210",
+    "co": "US"
+  },
+  "COACH-1207": {
+    "n": "COACH-1207",
+    "brand": "Coach",
+    "officialNumber": "1207",
+    "a1": "180 El Camino Real",
+    "ca": "Palo Alto",
+    "sa": "CA",
+    "z": "94304",
+    "co": "US"
+  },
+  "COACH-1208": {
+    "n": "COACH-1208",
+    "brand": "Coach",
+    "officialNumber": "1208",
+    "a1": "1689 Arden Way, Space #1318",
+    "ca": "Sacramento",
+    "sa": "CA",
+    "z": "95815",
+    "co": "US"
+  },
+  "COACH-1209": {
+    "n": "COACH-1209",
+    "brand": "Coach",
+    "officialNumber": "1209",
+    "a1": "3333 Bristol Street, Space 1836",
+    "ca": "Costa Mesa",
+    "sa": "CA",
+    "z": "92626",
+    "co": "US"
+  },
+  "COACH-1211": {
+    "n": "COACH-1211",
+    "brand": "Coach",
+    "officialNumber": "1211",
+    "a1": "2855 Stevens Creek Blvd., A-202",
+    "ca": "Santa Clara",
+    "sa": "CA",
+    "z": "95050",
+    "co": "US"
+  },
+  "COACH-1217": {
+    "n": "COACH-1217",
+    "brand": "Coach",
+    "officialNumber": "1217",
+    "a1": "845 Market Street, Bldg. 2, Suite 183, Building 2, Suite 183",
+    "ca": "San Francisco",
+    "sa": "CA",
+    "z": "94103",
+    "co": "US"
+  },
+  "COACH-1218": {
+    "n": "COACH-1218",
+    "brand": "Coach",
+    "officialNumber": "1218",
+    "a1": "1151 Galleria Blvd., Space 155, Space #155",
+    "ca": "Roseville",
+    "sa": "CA",
+    "z": "95678",
+    "co": "US"
+  },
+  "COACH-1220": {
+    "n": "COACH-1220",
+    "brand": "Coach",
+    "officialNumber": "1220",
+    "a1": "14006 Riverside Drive, Suite 34",
+    "ca": "Sherman Oaks",
+    "sa": "CA",
+    "z": "91423",
+    "co": "US"
+  },
+  "COACH-1243": {
+    "n": "COACH-1243",
+    "brand": "Coach",
+    "officialNumber": "1243",
+    "a1": "1772 Montebello Town Center Dr., Space #A19",
+    "ca": "Montebello",
+    "sa": "CA",
+    "z": "90640",
+    "co": "US"
+  },
+  "COACH-1250": {
+    "n": "COACH-1250",
+    "brand": "Coach",
+    "officialNumber": "1250",
+    "a1": "3000 East First Avenue, Space 2236",
+    "ca": "Denver",
+    "sa": "CO",
+    "z": "80206",
+    "co": "US"
+  },
+  "COACH-1251": {
+    "n": "COACH-1251",
+    "brand": "Coach",
+    "officialNumber": "1251",
+    "a1": "1 West Flatiron Circle, Space 1012",
+    "ca": "Broomfield",
+    "sa": "CO",
+    "z": "80021",
+    "co": "US"
+  },
+  "COACH-1252": {
+    "n": "COACH-1252",
+    "brand": "Coach",
+    "officialNumber": "1252",
+    "a1": "8405 Park Meadows Center Drive, Suite #1131",
+    "ca": "Lone Tree",
+    "sa": "CO",
+    "z": "80124",
+    "co": "US"
+  },
+  "COACH-1266": {
+    "n": "COACH-1266",
+    "brand": "Coach",
+    "officialNumber": "1266",
+    "a1": "400 S. Baldwin Avenue, Suite 2135",
+    "ca": "Arcadia",
+    "sa": "CA",
+    "z": "91007",
+    "co": "US"
+  },
+  "COACH-1270": {
+    "n": "COACH-1270",
+    "brand": "Coach",
+    "officialNumber": "1270",
+    "a1": "40764 Winchester Road, Space #550",
+    "ca": "Temecula",
+    "sa": "CA",
+    "z": "92591",
+    "co": "US"
+  },
+  "COACH-1271": {
+    "n": "COACH-1271",
+    "brand": "Coach",
+    "officialNumber": "1271",
+    "a1": "21712 Hawthorne Blvd., Space 412B",
+    "ca": "Torrance",
+    "sa": "CA",
+    "z": "90503",
+    "co": "US"
+  },
+  "COACH-1273": {
+    "n": "COACH-1273",
+    "brand": "Coach",
+    "officialNumber": "1273",
+    "a1": "395 Santa Monica Place, Space #130",
+    "ca": "Santa Monica",
+    "sa": "CA",
+    "z": "90401",
+    "co": "US"
+  },
+  "COACH-1274": {
+    "n": "COACH-1274",
+    "brand": "Coach",
+    "officialNumber": "1274",
+    "a1": "101 S. The Grove Drive, Suite G-5",
+    "ca": "Los Angeles",
+    "sa": "CA",
+    "z": "90036",
+    "co": "US"
+  },
+  "COACH-1302": {
+    "n": "COACH-1302",
+    "brand": "Coach",
+    "officialNumber": "1302",
+    "a1": "1500 New Britain Ave, Suite D228",
+    "ca": "West Hartford",
+    "sa": "CT",
+    "z": "06110",
+    "co": "US"
+  },
+  "COACH-1306": {
+    "n": "COACH-1306",
+    "brand": "Coach",
+    "officialNumber": "1306",
+    "a1": "1 Mohegan Sun Blvd., Space C-222",
+    "ca": "Uncasville",
+    "sa": "CT",
+    "z": "06382",
+    "co": "US"
+  },
+  "COACH-1350": {
+    "n": "COACH-1350",
+    "brand": "Coach",
+    "officialNumber": "1350",
+    "a1": "147 Christiana Mall",
+    "ca": "Newark",
+    "sa": "DE",
+    "z": "19702",
+    "co": "US"
+  },
+  "COACH-1401": {
+    "n": "COACH-1401",
+    "brand": "Coach",
+    "officialNumber": "1401",
+    "a1": "19501 Biscayne Blvd, Suite 139",
+    "ca": "Aventura",
+    "sa": "FL",
+    "z": "33180",
+    "co": "US"
+  },
+  "COACH-1404": {
+    "n": "COACH-1404",
+    "brand": "Coach",
+    "officialNumber": "1404",
+    "a1": "3101 PGA Boulevard, Suite J215",
+    "ca": "Palm Beach Gardens",
+    "sa": "FL",
+    "z": "33410",
+    "co": "US"
+  },
+  "COACH-1406": {
+    "n": "COACH-1406",
+    "brand": "Coach",
+    "officialNumber": "1406",
+    "a1": "6000 Glades Road, 1150",
+    "ca": "Boca Raton",
+    "sa": "FL",
+    "z": "33431",
+    "co": "US"
+  },
+  "COACH-1407": {
+    "n": "COACH-1407",
+    "brand": "Coach",
+    "officialNumber": "1407",
+    "a1": "7535 N Kendall Drive, Suite 2060A",
+    "ca": "Miami",
+    "sa": "FL",
+    "z": "33156",
+    "co": "US"
+  },
+  "COACH-1409": {
+    "n": "COACH-1409",
+    "brand": "Coach",
+    "officialNumber": "1409",
+    "a1": "2223 North West Shore Blvd., Suite 281",
+    "ca": "Tampa",
+    "sa": "FL",
+    "z": "33607",
+    "co": "US"
+  },
+  "COACH-1410": {
+    "n": "COACH-1410",
+    "brand": "Coach",
+    "officialNumber": "1410",
+    "a1": "4200 Conroy Road, Suite 264",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32839",
+    "co": "US"
+  },
+  "COACH-1412": {
+    "n": "COACH-1412",
+    "brand": "Coach",
+    "officialNumber": "1412",
+    "a1": "8001 South Orange Blossom #1274A",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32809",
+    "co": "US"
+  },
+  "COACH-1425": {
+    "n": "COACH-1425",
+    "brand": "Coach",
+    "officialNumber": "1425",
+    "a1": "4813 River City Drive, Space #101",
+    "ca": "Jacksonville",
+    "sa": "FL",
+    "z": "32246",
+    "co": "US"
+  },
+  "COACH-1434": {
+    "n": "COACH-1434",
+    "brand": "Coach",
+    "officialNumber": "1434",
+    "a1": "701 South Miami Avenue, Space 171, Suite 171C",
+    "ca": "Miami",
+    "sa": "FL",
+    "z": "33131",
+    "co": "US"
+  },
+  "COACH-1435": {
+    "n": "COACH-1435",
+    "brand": "Coach",
+    "officialNumber": "1435",
+    "a1": "1530 E. Buena Vista Drive, suite#B07W-103",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32830",
+    "co": "US"
+  },
+  "COACH-1450": {
+    "n": "COACH-1450",
+    "brand": "Coach",
+    "officialNumber": "1450",
+    "a1": "3393 Peachtree Rd. NE, Space 3085",
+    "ca": "Atlanta",
+    "sa": "GA",
+    "z": "30326",
+    "co": "US"
+  },
+  "COACH-1455": {
+    "n": "COACH-1455",
+    "brand": "Coach",
+    "officialNumber": "1455",
+    "a1": "3333 Buford Drive, Suite 2018A",
+    "ca": "Buford",
+    "sa": "GA",
+    "z": "30519",
+    "co": "US"
+  },
+  "COACH-1505": {
+    "n": "COACH-1505",
+    "brand": "Coach",
+    "officialNumber": "1505",
+    "a1": "1450 Ala Moana Blvd., Space # 2710",
+    "ca": "Honolulu",
+    "sa": "HI",
+    "z": "96814",
+    "co": "US"
+  },
+  "COACH-1560": {
+    "n": "COACH-1560",
+    "brand": "Coach",
+    "officialNumber": "1560",
+    "a1": "350 North Milwaukee, Space #1164",
+    "ca": "Boise",
+    "sa": "ID",
+    "z": "83704",
+    "co": "US"
+  },
+  "COACH-1603": {
+    "n": "COACH-1603",
+    "brand": "Coach",
+    "officialNumber": "1603",
+    "a1": "154 Oakbrook Center, Suite 154",
+    "ca": "Oakbrook",
+    "sa": "IL",
+    "z": "60523",
+    "co": "US"
+  },
+  "COACH-1604": {
+    "n": "COACH-1604",
+    "brand": "Coach",
+    "officialNumber": "1604",
+    "a1": "4999 Old Orchard Center, Suite B29",
+    "ca": "Skokie",
+    "sa": "IL",
+    "z": "60077",
+    "co": "US"
+  },
+  "COACH-1605": {
+    "n": "COACH-1605",
+    "brand": "Coach",
+    "officialNumber": "1605",
+    "a1": "F-340 Woodfield Mall",
+    "ca": "Schaumburg",
+    "sa": "IL",
+    "z": "60173",
+    "co": "US"
+  },
+  "COACH-1607": {
+    "n": "COACH-1607",
+    "brand": "Coach",
+    "officialNumber": "1607",
+    "a1": "444 North Michigan Avenue",
+    "ca": "Chicago",
+    "sa": "IL",
+    "z": "60611",
+    "co": "US"
+  },
+  "COACH-1608": {
+    "n": "COACH-1608",
+    "brand": "Coach",
+    "officialNumber": "1608",
+    "a1": "432 Orland Square Drive, #D07A",
+    "ca": "Orland Park",
+    "sa": "IL",
+    "z": "60462",
+    "co": "US"
+  },
+  "COACH-1651": {
+    "n": "COACH-1651",
+    "brand": "Coach",
+    "officialNumber": "1651",
+    "a1": "8701 Keystone Crossing, Space 26B",
+    "ca": "Indianapolis",
+    "sa": "IN",
+    "z": "46240",
+    "co": "US"
+  },
+  "COACH-1653": {
+    "n": "COACH-1653",
+    "brand": "Coach",
+    "officialNumber": "1653",
+    "a1": "6501 North Grape Road, Space #292A",
+    "ca": "Mishawaka",
+    "sa": "IN",
+    "z": "46545",
+    "co": "US"
+  },
+  "COACH-1654": {
+    "n": "COACH-1654",
+    "brand": "Coach",
+    "officialNumber": "1654",
+    "a1": "1251 Us Highway 31 N, Space #D13A",
+    "ca": "Greenwood",
+    "sa": "IN",
+    "z": "46142",
+    "co": "US"
+  },
+  "COACH-1751": {
+    "n": "COACH-1751",
+    "brand": "Coach",
+    "officialNumber": "1751",
+    "a1": "11471 West 95th Street, Suite 61",
+    "ca": "Overland Park",
+    "sa": "KS",
+    "z": "66214",
+    "co": "US"
+  },
+  "COACH-1752": {
+    "n": "COACH-1752",
+    "brand": "Coach",
+    "officialNumber": "1752",
+    "a1": "7700 E Kellogg Dr., Space #1422",
+    "ca": "Wichita",
+    "sa": "KS",
+    "z": "67207",
+    "co": "US"
+  },
+  "COACH-1800": {
+    "n": "COACH-1800",
+    "brand": "Coach",
+    "officialNumber": "1800",
+    "a1": "3401 Nicholasville Road, Space #D412",
+    "ca": "Lexington",
+    "sa": "KY",
+    "z": "40503",
+    "co": "US"
+  },
+  "COACH-1951": {
+    "n": "COACH-1951",
+    "brand": "Coach",
+    "officialNumber": "1951",
+    "a1": "825 Dulaney Valley Rd Suite 422",
+    "ca": "Towson",
+    "sa": "MD",
+    "z": "21204",
+    "co": "US"
+  },
+  "COACH-1953": {
+    "n": "COACH-1953",
+    "brand": "Coach",
+    "officialNumber": "1953",
+    "a1": "7101 Democracy Blvd, Space #2492 and 2500",
+    "ca": "Bethesda",
+    "sa": "MD",
+    "z": "20817",
+    "co": "US"
+  },
+  "COACH-1954": {
+    "n": "COACH-1954",
+    "brand": "Coach",
+    "officialNumber": "1954",
+    "a1": "10300 Little Patuxent Parkway, Space #2720",
+    "ca": "Columbia",
+    "sa": "MD",
+    "z": "21044",
+    "co": "US"
+  },
+  "COACH-2001": {
+    "n": "COACH-2001",
+    "brand": "Coach",
+    "officialNumber": "2001",
+    "a1": "75 Middlesex Turnpike, Space #1205A",
+    "ca": "Burlington",
+    "sa": "MA",
+    "z": "01803",
+    "co": "US"
+  },
+  "COACH-2002": {
+    "n": "COACH-2002",
+    "brand": "Coach",
+    "officialNumber": "2002",
+    "a1": "199 Boylston St, Space #S127A",
+    "ca": "Newton",
+    "sa": "MA",
+    "z": "02467",
+    "co": "US"
+  },
+  "COACH-2004": {
+    "n": "COACH-2004",
+    "brand": "Coach",
+    "officialNumber": "2004",
+    "a1": "106 South Market Building, Unit #2190",
+    "ca": "Boston",
+    "sa": "MA",
+    "z": "02109-1616",
+    "co": "US"
+  },
+  "COACH-2006": {
+    "n": "COACH-2006",
+    "brand": "Coach",
+    "officialNumber": "2006",
+    "a1": "100 Huntington Avenue, G011A",
+    "ca": "Boston",
+    "sa": "MA",
+    "z": "02116",
+    "co": "US"
+  },
+  "COACH-2050": {
+    "n": "COACH-2050",
+    "brand": "Coach",
+    "officialNumber": "2050",
+    "a1": "812 Briarwood Circle",
+    "ca": "Ann Arbor",
+    "sa": "MI",
+    "z": "48108",
+    "co": "US"
+  },
+  "COACH-2052": {
+    "n": "COACH-2052",
+    "brand": "Coach",
+    "officialNumber": "2052",
+    "a1": "2801 W Big Beaver Rd, Space G223",
+    "ca": "Troy",
+    "sa": "MI",
+    "z": "48084",
+    "co": "US"
+  },
+  "COACH-2053": {
+    "n": "COACH-2053",
+    "brand": "Coach",
+    "officialNumber": "2053",
+    "a1": "27930 Novi Rd",
+    "ca": "Novi",
+    "sa": "MI",
+    "z": "48377",
+    "co": "US"
+  },
+  "COACH-2056": {
+    "n": "COACH-2056",
+    "brand": "Coach",
+    "officialNumber": "2056",
+    "a1": "17360 Hall Rd, Space #185",
+    "ca": "Clinton Township",
+    "sa": "MI",
+    "z": "48038",
+    "co": "US"
+  },
+  "COACH-2100": {
+    "n": "COACH-2100",
+    "brand": "Coach",
+    "officialNumber": "2100",
+    "a1": "3510 Galleria, Space #3484",
+    "ca": "Edina",
+    "sa": "MN",
+    "z": "55435",
+    "co": "US"
+  },
+  "COACH-2102": {
+    "n": "COACH-2102",
+    "brand": "Coach",
+    "officialNumber": "2102",
+    "a1": "12679 Wayzata Blvd., Space #2355",
+    "ca": "Minnetonka",
+    "sa": "MN",
+    "z": "55305",
+    "co": "US"
+  },
+  "COACH-2103": {
+    "n": "COACH-2103",
+    "brand": "Coach",
+    "officialNumber": "2103",
+    "a1": "274 West Market Blvd",
+    "ca": "Bloomington",
+    "sa": "MN",
+    "z": "55425",
+    "co": "US"
+  },
+  "COACH-2107": {
+    "n": "COACH-2107",
+    "brand": "Coach",
+    "officialNumber": "2107",
+    "a1": "1600 Miller Trunk Highway, Space #J01A",
+    "ca": "Duluth",
+    "sa": "MN",
+    "z": "55811",
+    "co": "US"
+  },
+  "COACH-2200": {
+    "n": "COACH-2200",
+    "brand": "Coach",
+    "officialNumber": "2200",
+    "a1": "336 West 47th St",
+    "ca": "Kansas City",
+    "sa": "MO",
+    "z": "64112",
+    "co": "US"
+  },
+  "COACH-2201": {
+    "n": "COACH-2201",
+    "brand": "Coach",
+    "officialNumber": "2201",
+    "a1": "1701 S Lindbergh Blvd Level 1  #20, Space #20",
+    "ca": "Saint Louis",
+    "sa": "MO",
+    "z": "63131",
+    "co": "US"
+  },
+  "COACH-2204": {
+    "n": "COACH-2204",
+    "brand": "Coach",
+    "officialNumber": "2204",
+    "a1": "2825 S. Glenstone Ave, Space # V01B",
+    "ca": "Springfield",
+    "sa": "MO",
+    "z": "65804",
+    "co": "US"
+  },
+  "COACH-2300": {
+    "n": "COACH-2300",
+    "brand": "Coach",
+    "officialNumber": "2300",
+    "a1": "17255 Davenport Street, Suite #119",
+    "ca": "Omaha",
+    "sa": "NE",
+    "z": "68118",
+    "co": "US"
+  },
+  "COACH-2350": {
+    "n": "COACH-2350",
+    "brand": "Coach",
+    "officialNumber": "2350",
+    "a1": "99 Rockingham Park Blvd., Space #E209",
+    "ca": "Salem",
+    "sa": "NH",
+    "z": "03079",
+    "co": "US"
+  },
+  "COACH-2451": {
+    "n": "COACH-2451",
+    "brand": "Coach",
+    "officialNumber": "2451",
+    "a1": "Route 4 & 17, Unit #1-16",
+    "ca": "Paramus",
+    "sa": "NJ",
+    "z": "07652",
+    "co": "US"
+  },
+  "COACH-2454": {
+    "n": "COACH-2454",
+    "brand": "Coach",
+    "officialNumber": "2454",
+    "a1": "1 Riverside Square Space 137",
+    "ca": "Hackensack",
+    "sa": "NJ",
+    "z": "07601",
+    "co": "US"
+  },
+  "COACH-2455": {
+    "n": "COACH-2455",
+    "brand": "Coach",
+    "officialNumber": "2455",
+    "a1": "1200 Morris Turnpike, Space B267",
+    "ca": "Short Hills",
+    "sa": "NJ",
+    "z": "07078",
+    "co": "US"
+  },
+  "COACH-2459": {
+    "n": "COACH-2459",
+    "brand": "Coach",
+    "officialNumber": "2459",
+    "a1": "500 Route 73 South",
+    "ca": "Marlton",
+    "sa": "NJ",
+    "z": "08053",
+    "co": "US"
+  },
+  "COACH-2460": {
+    "n": "COACH-2460",
+    "brand": "Coach",
+    "officialNumber": "2460",
+    "a1": "1400 Willowbrook Mall, Space 1418",
+    "ca": "Wayne",
+    "sa": "NJ",
+    "z": "07470",
+    "co": "US"
+  },
+  "COACH-2472": {
+    "n": "COACH-2472",
+    "brand": "Coach",
+    "officialNumber": "2472",
+    "a1": "139 Quaker Bridge Mall, Space #1030",
+    "ca": "Lawrenceville",
+    "sa": "NJ",
+    "z": "08648",
+    "co": "US"
+  },
+  "COACH-2501": {
+    "n": "COACH-2501",
+    "brand": "Coach",
+    "officialNumber": "2501",
+    "a1": "3500 Las Vegas Blvd. So. Space A-01",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "COACH-2502": {
+    "n": "COACH-2502",
+    "brand": "Coach",
+    "officialNumber": "2502",
+    "a1": "3200 Las Vegas Blvd., Space 2022",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "COACH-2507": {
+    "n": "COACH-2507",
+    "brand": "Coach",
+    "officialNumber": "2507",
+    "a1": "3327 Las Vegas Blvd. South, Space #2846",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "COACH-2509": {
+    "n": "COACH-2509",
+    "brand": "Coach",
+    "officialNumber": "2509",
+    "a1": "5425 Meadowood Mall Circle, Space #C107A",
+    "ca": "Reno",
+    "sa": "NV",
+    "z": "89502",
+    "co": "US"
+  },
+  "COACH-2551": {
+    "n": "COACH-2551",
+    "brand": "Coach",
+    "officialNumber": "2551",
+    "a1": "Roosevelt Field Mall, Space #2091- A",
+    "ca": "Garden City",
+    "sa": "NY",
+    "z": "11530",
+    "co": "US"
+  },
+  "COACH-2554": {
+    "n": "COACH-2554",
+    "brand": "Coach",
+    "officialNumber": "2554",
+    "a1": "125 Westchester Ave, Suite 2410",
+    "ca": "White Plains",
+    "sa": "NY",
+    "z": "10601",
+    "co": "US"
+  },
+  "COACH-2561": {
+    "n": "COACH-2561",
+    "brand": "Coach",
+    "officialNumber": "2561",
+    "a1": "143 Prince Street",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10012",
+    "co": "US"
+  },
+  "COACH-2563": {
+    "n": "COACH-2563",
+    "brand": "Coach",
+    "officialNumber": "2563",
+    "a1": "160 Walt Whitman Road, Space 1061-A",
+    "ca": "Huntington Station",
+    "sa": "NY",
+    "z": "11746",
+    "co": "US"
+  },
+  "COACH-2575": {
+    "n": "COACH-2575",
+    "brand": "Coach",
+    "officialNumber": "2575",
+    "a1": "1 Walden Galleria, Space #G105",
+    "ca": "Buffalo",
+    "sa": "NY",
+    "z": "14225",
+    "co": "US"
+  },
+  "COACH-2577": {
+    "n": "COACH-2577",
+    "brand": "Coach",
+    "officialNumber": "2577",
+    "a1": "151 W 34th Street",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-2579": {
+    "n": "COACH-2579",
+    "brand": "Coach",
+    "officialNumber": "2579",
+    "a1": "685 Fifth Avenue",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10022",
+    "co": "US"
+  },
+  "COACH-2580": {
+    "n": "COACH-2580",
+    "brand": "Coach",
+    "officialNumber": "2580",
+    "a1": "20 Hudson Yards, Space #RU127",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-2600": {
+    "n": "COACH-2600",
+    "brand": "Coach",
+    "officialNumber": "2600",
+    "a1": "4400 Sharon Road, Space L11B",
+    "ca": "Charlotte",
+    "sa": "NC",
+    "z": "28211",
+    "co": "US"
+  },
+  "COACH-2601": {
+    "n": "COACH-2601",
+    "brand": "Coach",
+    "officialNumber": "2601",
+    "a1": "4325 Glenwood Avenue, Space 1065",
+    "ca": "Raleigh",
+    "sa": "NC",
+    "z": "27612",
+    "co": "US"
+  },
+  "COACH-2700": {
+    "n": "COACH-2700",
+    "brand": "Coach",
+    "officialNumber": "2700",
+    "a1": "26300 Cedar Road, Space 1400",
+    "ca": "Beachwood",
+    "sa": "OH",
+    "z": "44122",
+    "co": "US"
+  },
+  "COACH-2701": {
+    "n": "COACH-2701",
+    "brand": "Coach",
+    "officialNumber": "2701",
+    "a1": "7875 Montgomery Road,, Space #U219",
+    "ca": "Cincinnati",
+    "sa": "OH",
+    "z": "45236",
+    "co": "US"
+  },
+  "COACH-2704": {
+    "n": "COACH-2704",
+    "brand": "Coach",
+    "officialNumber": "2704",
+    "a1": "4171 The Strand, Space 223",
+    "ca": "Columbus",
+    "sa": "OH",
+    "z": "43219",
+    "co": "US"
+  },
+  "COACH-2705": {
+    "n": "COACH-2705",
+    "brand": "Coach",
+    "officialNumber": "2705",
+    "a1": "183 Main Street, Space #1025",
+    "ca": "Westlake",
+    "sa": "OH",
+    "z": "44145",
+    "co": "US"
+  },
+  "COACH-2750": {
+    "n": "COACH-2750",
+    "brand": "Coach",
+    "officialNumber": "2750",
+    "a1": "1846 Utica Square, Space #1846",
+    "ca": "Tulsa",
+    "sa": "OK",
+    "z": "74114",
+    "co": "US"
+  },
+  "COACH-2751": {
+    "n": "COACH-2751",
+    "brand": "Coach",
+    "officialNumber": "2751",
+    "a1": "1901 NW Expressway St., Suite #1015B",
+    "ca": "Oklahoma City",
+    "sa": "OK",
+    "z": "73118",
+    "co": "US"
+  },
+  "COACH-2752": {
+    "n": "COACH-2752",
+    "brand": "Coach",
+    "officialNumber": "2752",
+    "a1": "7021 S Memorial Dr., Space #180",
+    "ca": "Tulsa",
+    "sa": "OK",
+    "z": "74133",
+    "co": "US"
+  },
+  "COACH-2801": {
+    "n": "COACH-2801",
+    "brand": "Coach",
+    "officialNumber": "2801",
+    "a1": "9689 SW Washington Sq Rd",
+    "ca": "Tigard",
+    "sa": "OR",
+    "z": "97223",
+    "co": "US"
+  },
+  "COACH-2803": {
+    "n": "COACH-2803",
+    "brand": "Coach",
+    "officialNumber": "2803",
+    "a1": "12000 SE 82nd Avenue, Suite #1030",
+    "ca": "Portland",
+    "sa": "OR",
+    "z": "97086",
+    "co": "US"
+  },
+  "COACH-2856": {
+    "n": "COACH-2856",
+    "brand": "Coach",
+    "officialNumber": "2856",
+    "a1": "160 North Gulph Road",
+    "ca": "King of Prussia",
+    "sa": "PA",
+    "z": "19406",
+    "co": "US"
+  },
+  "COACH-2859": {
+    "n": "COACH-2859",
+    "brand": "Coach",
+    "officialNumber": "2859",
+    "a1": "1000 Ross Park Mall Dr., Space #M4",
+    "ca": "Pittsburgh",
+    "sa": "PA",
+    "z": "15237",
+    "co": "US"
+  },
+  "COACH-2952": {
+    "n": "COACH-2952",
+    "brand": "Coach",
+    "officialNumber": "2952",
+    "a1": "100 Columbiana Circle, Suite 1060",
+    "ca": "Columbia",
+    "sa": "SC",
+    "z": "29212",
+    "co": "US"
+  },
+  "COACH-2980": {
+    "n": "COACH-2980",
+    "brand": "Coach",
+    "officialNumber": "2980",
+    "a1": "870 Empire Mall",
+    "ca": "Sioux Falls",
+    "sa": "SD",
+    "z": "57106",
+    "co": "US"
+  },
+  "COACH-3099": {
+    "n": "COACH-3099",
+    "brand": "Coach",
+    "officialNumber": "3099",
+    "a1": "7601 Windrose Avenue, Suite #F130, Suite #F130",
+    "ca": "Plano",
+    "sa": "TX",
+    "z": "75024",
+    "co": "US"
+  },
+  "COACH-3101": {
+    "n": "COACH-3101",
+    "brand": "Coach",
+    "officialNumber": "3101",
+    "a1": "5115 Westheimer, Space C2585",
+    "ca": "Houston",
+    "sa": "TX",
+    "z": "77056",
+    "co": "US"
+  },
+  "COACH-3104": {
+    "n": "COACH-3104",
+    "brand": "Coach",
+    "officialNumber": "3104",
+    "a1": "8687 N Central Expressway Suite 1220, Suite 1220",
+    "ca": "Dallas",
+    "sa": "TX",
+    "z": "75225",
+    "co": "US"
+  },
+  "COACH-3108": {
+    "n": "COACH-3108",
+    "brand": "Coach",
+    "officialNumber": "3108",
+    "a1": "2601 Preston Road, Suite #2060",
+    "ca": "Frisco",
+    "sa": "TX",
+    "z": "75034",
+    "co": "US"
+  },
+  "COACH-3110": {
+    "n": "COACH-3110",
+    "brand": "Coach",
+    "officialNumber": "3110",
+    "a1": "7400 San Pedro, Suite #50",
+    "ca": "San Antonio",
+    "sa": "TX",
+    "z": "78216",
+    "co": "US"
+  },
+  "COACH-3111": {
+    "n": "COACH-3111",
+    "brand": "Coach",
+    "officialNumber": "3111",
+    "a1": "740 Memorial City Mall",
+    "ca": "Houston",
+    "sa": "TX",
+    "z": "77024",
+    "co": "US"
+  },
+  "COACH-3112": {
+    "n": "COACH-3112",
+    "brand": "Coach",
+    "officialNumber": "3112",
+    "a1": "2901 S. Capital of Texas Highway, #H11A",
+    "ca": "Austin",
+    "sa": "TX",
+    "z": "78746",
+    "co": "US"
+  },
+  "COACH-3113": {
+    "n": "COACH-3113",
+    "brand": "Coach",
+    "officialNumber": "3113",
+    "a1": "1201 Lake Woodlands Drive, Space #1130",
+    "ca": "Spring",
+    "sa": "TX",
+    "z": "77380",
+    "co": "US"
+  },
+  "COACH-3115": {
+    "n": "COACH-3115",
+    "brand": "Coach",
+    "officialNumber": "3115",
+    "a1": "15900 La Cantera Parkway Suite 2285",
+    "ca": "San Antonio",
+    "sa": "TX",
+    "z": "78256",
+    "co": "US"
+  },
+  "COACH-3116": {
+    "n": "COACH-3116",
+    "brand": "Coach",
+    "officialNumber": "3116",
+    "a1": "400 Grand Avenue West",
+    "ca": "Southlake",
+    "sa": "TX",
+    "z": "76092",
+    "co": "US"
+  },
+  "COACH-3119": {
+    "n": "COACH-3119",
+    "brand": "Coach",
+    "officialNumber": "3119",
+    "a1": "11601 Century Oaks Terrace, Suite 125",
+    "ca": "Austin",
+    "sa": "TX",
+    "z": "78758",
+    "co": "US"
+  },
+  "COACH-3120": {
+    "n": "COACH-3120",
+    "brand": "Coach",
+    "officialNumber": "3120",
+    "a1": "16535 Southwest Freeway, Space #645",
+    "ca": "Sugarland",
+    "sa": "TX",
+    "z": "77479",
+    "co": "US"
+  },
+  "COACH-3132": {
+    "n": "COACH-3132",
+    "brand": "Coach",
+    "officialNumber": "3132",
+    "a1": "2200 S. 10th Street, Space #A07A",
+    "ca": "McAllen",
+    "sa": "TX",
+    "z": "78503",
+    "co": "US"
+  },
+  "COACH-3147": {
+    "n": "COACH-3147",
+    "brand": "Coach",
+    "officialNumber": "3147",
+    "a1": "4601 S Broadway Ave, Space #C05",
+    "ca": "Tyler",
+    "sa": "TX",
+    "z": "75703",
+    "co": "US"
+  },
+  "COACH-3148": {
+    "n": "COACH-3148",
+    "brand": "Coach",
+    "officialNumber": "3148",
+    "a1": "4511 N Midkiff Road, Space #E01B",
+    "ca": "Midland",
+    "sa": "TX",
+    "z": "79705",
+    "co": "US"
+  },
+  "COACH-3152": {
+    "n": "COACH-3152",
+    "brand": "Coach",
+    "officialNumber": "3152",
+    "a1": "50 South Main Street, Suite 261",
+    "ca": "Salt Lake City",
+    "sa": "UT",
+    "z": "84101",
+    "co": "US"
+  },
+  "COACH-3251": {
+    "n": "COACH-3251",
+    "brand": "Coach",
+    "officialNumber": "3251",
+    "a1": "1100 South Hayes Street, Space# P05A-2",
+    "ca": "Arlington",
+    "sa": "VA",
+    "z": "22202",
+    "co": "US"
+  },
+  "COACH-3252": {
+    "n": "COACH-3252",
+    "brand": "Coach",
+    "officialNumber": "3252",
+    "a1": "8019 Tysons Corner Center",
+    "ca": "Mclean",
+    "sa": "VA",
+    "z": "22102",
+    "co": "US"
+  },
+  "COACH-3301": {
+    "n": "COACH-3301",
+    "brand": "Coach",
+    "officialNumber": "3301",
+    "a1": "155 Bellevue Sq",
+    "ca": "Bellevue",
+    "sa": "WA",
+    "z": "98004",
+    "co": "US"
+  },
+  "COACH-3551": {
+    "n": "COACH-3551",
+    "brand": "Coach",
+    "officialNumber": "3551",
+    "a1": "1000 Mall of San Juan, Suite 260, Space #260",
+    "ca": "San Juan",
+    "sa": "PR",
+    "z": "00924",
+    "co": "US"
+  },
+  "COACH-3599": {
+    "n": "COACH-3599",
+    "brand": "Coach",
+    "officialNumber": "3599",
+    "a1": "10 Hudson Yards",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-3600": {
+    "n": "COACH-3600",
+    "brand": "Coach",
+    "officialNumber": "3600",
+    "a1": "2601 S. Mckenzie, Suite #220/220",
+    "ca": "Foley",
+    "sa": "AL",
+    "z": "36535",
+    "co": "US"
+  },
+  "COACH-3601": {
+    "n": "COACH-3601",
+    "brand": "Coach",
+    "officialNumber": "3601",
+    "a1": "6200 Grand River Blvd East, Space #642",
+    "ca": "Leeds",
+    "sa": "AL",
+    "z": "35094",
+    "co": "US"
+  },
+  "COACH-3700": {
+    "n": "COACH-3700",
+    "brand": "Coach",
+    "officialNumber": "3700",
+    "a1": "4250 West Anthem Way, Space #520",
+    "ca": "Phoenix",
+    "sa": "AZ",
+    "z": "85086",
+    "co": "US"
+  },
+  "COACH-3702": {
+    "n": "COACH-3702",
+    "brand": "Coach",
+    "officialNumber": "3702",
+    "a1": "6800 N. 95th Avenue, Space 300",
+    "ca": "Glendale",
+    "sa": "AZ",
+    "z": "85305",
+    "co": "US"
+  },
+  "COACH-3703": {
+    "n": "COACH-3703",
+    "brand": "Coach",
+    "officialNumber": "3703",
+    "a1": "4976 Premium Outlets Way, Space #700",
+    "ca": "Chandler",
+    "sa": "AZ",
+    "z": "85226",
+    "co": "US"
+  },
+  "COACH-3704": {
+    "n": "COACH-3704",
+    "brand": "Coach",
+    "officialNumber": "3704",
+    "a1": "6401 West Marana Center Blvd., Space #935",
+    "ca": "Marana",
+    "sa": "AZ",
+    "z": "85742",
+    "co": "US"
+  },
+  "COACH-3801": {
+    "n": "COACH-3801",
+    "brand": "Coach",
+    "officialNumber": "3801",
+    "a1": "2796 Tanger Way, Suite 300",
+    "ca": "Barstow",
+    "sa": "CA",
+    "z": "92311",
+    "co": "US"
+  },
+  "COACH-3802": {
+    "n": "COACH-3802",
+    "brand": "Coach",
+    "officialNumber": "3802",
+    "a1": "48650 Seminole Road, Space K-1000",
+    "ca": "Cabazon",
+    "sa": "CA",
+    "z": "92230",
+    "co": "US"
+  },
+  "COACH-3803": {
+    "n": "COACH-3803",
+    "brand": "Coach",
+    "officialNumber": "3803",
+    "a1": "Ocean & San Carlos Ave, P.O. Box 572",
+    "ca": "Carmel",
+    "sa": "CA",
+    "z": "93921",
+    "co": "US"
+  },
+  "COACH-3805": {
+    "n": "COACH-3805",
+    "brand": "Coach",
+    "officialNumber": "3805",
+    "a1": "28200 Highway 189, Suite T210",
+    "ca": "Lake Arrowhead",
+    "sa": "CA",
+    "z": "92352",
+    "co": "US"
+  },
+  "COACH-3807": {
+    "n": "COACH-3807",
+    "brand": "Coach",
+    "officialNumber": "3807",
+    "a1": "690 Ventura Blvd, Suite 100",
+    "ca": "Camarillo",
+    "sa": "CA",
+    "z": "93010",
+    "co": "US"
+  },
+  "COACH-3808": {
+    "n": "COACH-3808",
+    "brand": "Coach",
+    "officialNumber": "3808",
+    "a1": "5630 Paseo Del Norte, Space D106",
+    "ca": "Carlsbad",
+    "sa": "CA",
+    "z": "92008",
+    "co": "US"
+  },
+  "COACH-3809": {
+    "n": "COACH-3809",
+    "brand": "Coach",
+    "officialNumber": "3809",
+    "a1": "8325 Arroyo Circle Space B043",
+    "ca": "Gilroy",
+    "sa": "CA",
+    "z": "95020",
+    "co": "US"
+  },
+  "COACH-3810": {
+    "n": "COACH-3810",
+    "brand": "Coach",
+    "officialNumber": "3810",
+    "a1": "2200 Petaluma Blvd. North, Space 935",
+    "ca": "Petaluma",
+    "sa": "CA",
+    "z": "94952",
+    "co": "US"
+  },
+  "COACH-3811": {
+    "n": "COACH-3811",
+    "brand": "Coach",
+    "officialNumber": "3811",
+    "a1": "348 Nut Tree Road",
+    "ca": "Vacaville",
+    "sa": "CA",
+    "z": "95687",
+    "co": "US"
+  },
+  "COACH-3812": {
+    "n": "COACH-3812",
+    "brand": "Coach",
+    "officialNumber": "3812",
+    "a1": "808A State Street, 1st Floor",
+    "ca": "Santa Barbara",
+    "sa": "CA",
+    "z": "93101",
+    "co": "US"
+  },
+  "COACH-3813": {
+    "n": "COACH-3813",
+    "brand": "Coach",
+    "officialNumber": "3813",
+    "a1": "4155 Camino De La Plaza, Space B-420",
+    "ca": "San Diego",
+    "sa": "CA",
+    "z": "92173",
+    "co": "US"
+  },
+  "COACH-3814": {
+    "n": "COACH-3814",
+    "brand": "Coach",
+    "officialNumber": "3814",
+    "a1": "885 Factory Stores Drive, Space #885",
+    "ca": "Napa",
+    "sa": "CA",
+    "z": "94558",
+    "co": "US"
+  },
+  "COACH-3815": {
+    "n": "COACH-3815",
+    "brand": "Coach",
+    "officialNumber": "3815",
+    "a1": "13000 Folsom Blvd. Suite #706A, Suite #706",
+    "ca": "Folsom",
+    "sa": "CA",
+    "z": "95630",
+    "co": "US"
+  },
+  "COACH-3816": {
+    "n": "COACH-3816",
+    "brand": "Coach",
+    "officialNumber": "3816",
+    "a1": "1469 Retherford Street, Space #060",
+    "ca": "Tulare",
+    "sa": "CA",
+    "z": "93274",
+    "co": "US"
+  },
+  "COACH-3817": {
+    "n": "COACH-3817",
+    "brand": "Coach",
+    "officialNumber": "3817",
+    "a1": "5003 Willows Road, Space #E102",
+    "ca": "Alpine",
+    "sa": "CA",
+    "z": "91901",
+    "co": "US"
+  },
+  "COACH-3818": {
+    "n": "COACH-3818",
+    "brand": "Coach",
+    "officialNumber": "3818",
+    "a1": "234 Great Mall Drive",
+    "ca": "Milpitas",
+    "sa": "CA",
+    "z": "95035",
+    "co": "US"
+  },
+  "COACH-3819": {
+    "n": "COACH-3819",
+    "brand": "Coach",
+    "officialNumber": "3819",
+    "a1": "1 East Mills Circle, Suite 1050",
+    "ca": "Ontario",
+    "sa": "CA",
+    "z": "91764",
+    "co": "US"
+  },
+  "COACH-3821": {
+    "n": "COACH-3821",
+    "brand": "Coach",
+    "officialNumber": "3821",
+    "a1": "333 Five Cities Drive, Suite #108",
+    "ca": "Pismo Beach",
+    "sa": "CA",
+    "z": "93449",
+    "co": "US"
+  },
+  "COACH-3823": {
+    "n": "COACH-3823",
+    "brand": "Coach",
+    "officialNumber": "3823",
+    "a1": "740 East Ventura Blvd., Space #518",
+    "ca": "Camarillo",
+    "sa": "CA",
+    "z": "93010",
+    "co": "US"
+  },
+  "COACH-3824": {
+    "n": "COACH-3824",
+    "brand": "Coach",
+    "officialNumber": "3824",
+    "a1": "2796 Tanger Way, Space #310",
+    "ca": "Barstow",
+    "sa": "CA",
+    "z": "92311",
+    "co": "US"
+  },
+  "COACH-3825": {
+    "n": "COACH-3825",
+    "brand": "Coach",
+    "officialNumber": "3825",
+    "a1": "8375 Arroyo Circle, Space #A059",
+    "ca": "Gilroy",
+    "sa": "CA",
+    "z": "95020",
+    "co": "US"
+  },
+  "COACH-3827": {
+    "n": "COACH-3827",
+    "brand": "Coach",
+    "officialNumber": "3827",
+    "a1": "100 Citadel Drive, Space #515",
+    "ca": "Commerce",
+    "sa": "CA",
+    "z": "90040",
+    "co": "US"
+  },
+  "COACH-3828": {
+    "n": "COACH-3828",
+    "brand": "Coach",
+    "officialNumber": "3828",
+    "a1": "3098 Livermore Outlets Drive, Space #395",
+    "ca": "Livermore",
+    "sa": "CA",
+    "z": "94551",
+    "co": "US"
+  },
+  "COACH-3831": {
+    "n": "COACH-3831",
+    "brand": "Coach",
+    "officialNumber": "3831",
+    "a1": "888 W. 2nd Street, Suite I-100",
+    "ca": "Calexico",
+    "sa": "CA",
+    "z": "92231",
+    "co": "US"
+  },
+  "COACH-3832": {
+    "n": "COACH-3832",
+    "brand": "Coach",
+    "officialNumber": "3832",
+    "a1": "5600 Paseo Del Norte, Suite #139A Carlsbad, CA 92008, Space #A139",
+    "ca": "Carlsbad",
+    "sa": "CA",
+    "z": "92008",
+    "co": "US"
+  },
+  "COACH-3834": {
+    "n": "COACH-3834",
+    "brand": "Coach",
+    "officialNumber": "3834",
+    "a1": "5701 Outlets at Tejon Parkway  #940, Suite #940",
+    "ca": "Arvin",
+    "sa": "CA",
+    "z": "93203",
+    "co": "US"
+  },
+  "COACH-3850": {
+    "n": "COACH-3850",
+    "brand": "Coach",
+    "officialNumber": "3850",
+    "a1": "5050 Factory Shops Blvd #460",
+    "ca": "Castle Rock",
+    "sa": "CO",
+    "z": "80108",
+    "co": "US"
+  },
+  "COACH-3851": {
+    "n": "COACH-3851",
+    "brand": "Coach",
+    "officialNumber": "3851",
+    "a1": "227P Blue River Parkway",
+    "ca": "Silverthorne",
+    "sa": "CO",
+    "z": "80498",
+    "co": "US"
+  },
+  "COACH-3853": {
+    "n": "COACH-3853",
+    "brand": "Coach",
+    "officialNumber": "3853",
+    "a1": "14500 W. Colfax Ave., Space #201A, Space #201A",
+    "ca": "Lakewood",
+    "sa": "CO",
+    "z": "80401",
+    "co": "US"
+  },
+  "COACH-3854": {
+    "n": "COACH-3854",
+    "brand": "Coach",
+    "officialNumber": "3854",
+    "a1": "13801 Grant Street, #720",
+    "ca": "Thornton",
+    "sa": "CO",
+    "z": "80023",
+    "co": "US"
+  },
+  "COACH-3900": {
+    "n": "COACH-3900",
+    "brand": "Coach",
+    "officialNumber": "3900",
+    "a1": "20 Killingworth Turnpike, Space 500",
+    "ca": "Clinton",
+    "sa": "CT",
+    "z": "06413",
+    "co": "US"
+  },
+  "COACH-3901": {
+    "n": "COACH-3901",
+    "brand": "Coach",
+    "officialNumber": "3901",
+    "a1": "Trolley Line Boulevard Space # 430, Space 430",
+    "ca": "Mashantucket",
+    "sa": "CT",
+    "z": "06338",
+    "co": "US"
+  },
+  "COACH-3950": {
+    "n": "COACH-3950",
+    "brand": "Coach",
+    "officialNumber": "3950",
+    "a1": "34986 Midway Outlet Drive, Suite 115",
+    "ca": "Rehoboth Beach",
+    "sa": "DE",
+    "z": "19971",
+    "co": "US"
+  },
+  "COACH-4001": {
+    "n": "COACH-4001",
+    "brand": "Coach",
+    "officialNumber": "4001",
+    "a1": "10676 W. Emerald Coast Pkwy, Suite 129",
+    "ca": "Destin",
+    "sa": "FL",
+    "z": "32550",
+    "co": "US"
+  },
+  "COACH-4002": {
+    "n": "COACH-4002",
+    "brand": "Coach",
+    "officialNumber": "4002",
+    "a1": "4965 International Dr., Bldg 2D01 - Space #2A-06",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32819",
+    "co": "US"
+  },
+  "COACH-4004": {
+    "n": "COACH-4004",
+    "brand": "Coach",
+    "officialNumber": "4004",
+    "a1": "5601 Factory Shops Blvd, Space 400",
+    "ca": "Ellenton",
+    "sa": "FL",
+    "z": "34222",
+    "co": "US"
+  },
+  "COACH-4005": {
+    "n": "COACH-4005",
+    "brand": "Coach",
+    "officialNumber": "4005",
+    "a1": "2700 State Rd 16, Suite 810",
+    "ca": "Saint Augustine",
+    "sa": "FL",
+    "z": "32092",
+    "co": "US"
+  },
+  "COACH-4006": {
+    "n": "COACH-4006",
+    "brand": "Coach",
+    "officialNumber": "4006",
+    "a1": "517 Duval Street",
+    "ca": "Key West",
+    "sa": "FL",
+    "z": "33040",
+    "co": "US"
+  },
+  "COACH-4007": {
+    "n": "COACH-4007",
+    "brand": "Coach",
+    "officialNumber": "4007",
+    "a1": "8200 Vineland Avenue, Suite 830",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32821",
+    "co": "US"
+  },
+  "COACH-4008": {
+    "n": "COACH-4008",
+    "brand": "Coach",
+    "officialNumber": "4008",
+    "a1": "10801 Corkscrew Road Space #322",
+    "ca": "Estero",
+    "sa": "FL",
+    "z": "33928",
+    "co": "US"
+  },
+  "COACH-4009": {
+    "n": "COACH-4009",
+    "brand": "Coach",
+    "officialNumber": "4009",
+    "a1": "1800 Sawgrass Mills Circle, Suite 2530",
+    "ca": "Sunrise",
+    "sa": "FL",
+    "z": "33323",
+    "co": "US"
+  },
+  "COACH-4011": {
+    "n": "COACH-4011",
+    "brand": "Coach",
+    "officialNumber": "4011",
+    "a1": "1858 94th Drive, Space #C100+C110",
+    "ca": "Vero Beach",
+    "sa": "FL",
+    "z": "32966",
+    "co": "US"
+  },
+  "COACH-4012": {
+    "n": "COACH-4012",
+    "brand": "Coach",
+    "officialNumber": "4012",
+    "a1": "8200 Vineland Avenue, Space #430",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32821",
+    "co": "US"
+  },
+  "COACH-4014": {
+    "n": "COACH-4014",
+    "brand": "Coach",
+    "officialNumber": "4014",
+    "a1": "250 East Palm Drive, Space #410",
+    "ca": "Florida City",
+    "sa": "FL",
+    "z": "33034",
+    "co": "US"
+  },
+  "COACH-4018": {
+    "n": "COACH-4018",
+    "brand": "Coach",
+    "officialNumber": "4018",
+    "a1": "2312 Grand Cypress Drive, Space #875",
+    "ca": "Lutz",
+    "sa": "FL",
+    "z": "33559",
+    "co": "US"
+  },
+  "COACH-4019": {
+    "n": "COACH-4019",
+    "brand": "Coach",
+    "officialNumber": "4019",
+    "a1": "11401 NW 12th Street, Unit # 370",
+    "ca": "Miami",
+    "sa": "FL",
+    "z": "33172",
+    "co": "US"
+  },
+  "COACH-4020": {
+    "n": "COACH-4020",
+    "brand": "Coach",
+    "officialNumber": "4020",
+    "a1": "1791 Palm Beach Lakes Blvd., Suites W103 and W104",
+    "ca": "West Palm Beach",
+    "sa": "FL",
+    "z": "33401",
+    "co": "US"
+  },
+  "COACH-4021": {
+    "n": "COACH-4021",
+    "brand": "Coach",
+    "officialNumber": "4021",
+    "a1": "1100 Cornerstone Blvd, Suite 660",
+    "ca": "Daytona Beach",
+    "sa": "FL",
+    "z": "32117",
+    "co": "US"
+  },
+  "COACH-4022": {
+    "n": "COACH-4022",
+    "brand": "Coach",
+    "officialNumber": "4022",
+    "a1": "8888 Sw 136Th St, Bldg.S, Space 295",
+    "ca": "Miami",
+    "sa": "FL",
+    "z": "33176",
+    "co": "US"
+  },
+  "COACH-4051": {
+    "n": "COACH-4051",
+    "brand": "Coach",
+    "officialNumber": "4051",
+    "a1": "800 Highway 400, Space 920",
+    "ca": "Dawsonville",
+    "sa": "GA",
+    "z": "30534",
+    "co": "US"
+  },
+  "COACH-4052": {
+    "n": "COACH-4052",
+    "brand": "Coach",
+    "officialNumber": "4052",
+    "a1": "1000 Tanger Drive, Space #507",
+    "ca": "Locust Grove",
+    "sa": "GA",
+    "z": "30248",
+    "co": "US"
+  },
+  "COACH-4053": {
+    "n": "COACH-4053",
+    "brand": "Coach",
+    "officialNumber": "4053",
+    "a1": "455 Belwood Road, Suite #63",
+    "ca": "Calhoun",
+    "sa": "GA",
+    "z": "30701",
+    "co": "US"
+  },
+  "COACH-4054": {
+    "n": "COACH-4054",
+    "brand": "Coach",
+    "officialNumber": "4054",
+    "a1": "800 Steven B Tanger Blvd., Space #1200",
+    "ca": "Commerce",
+    "sa": "GA",
+    "z": "30529",
+    "co": "US"
+  },
+  "COACH-4055": {
+    "n": "COACH-4055",
+    "brand": "Coach",
+    "officialNumber": "4055",
+    "a1": "915 Ridgewalk Parkway, Space #E-510, Space #E-510",
+    "ca": "Woodstock",
+    "sa": "GA",
+    "z": "30188",
+    "co": "US"
+  },
+  "COACH-4056": {
+    "n": "COACH-4056",
+    "brand": "Coach",
+    "officialNumber": "4056",
+    "a1": "200 Tanger Outlet Blvd, space #697",
+    "ca": "Pooler",
+    "sa": "GA",
+    "z": "31322",
+    "co": "US"
+  },
+  "COACH-4100": {
+    "n": "COACH-4100",
+    "brand": "Coach",
+    "officialNumber": "4100",
+    "a1": "94-796 Lumiaina Street, Suite 301",
+    "ca": "Waipahu",
+    "sa": "HI",
+    "z": "96797",
+    "co": "US"
+  },
+  "COACH-4101": {
+    "n": "COACH-4101",
+    "brand": "Coach",
+    "officialNumber": "4101",
+    "a1": "94-798 Lumiaina St., Space #0403",
+    "ca": "Waipahu",
+    "sa": "HI",
+    "z": "96797",
+    "co": "US"
+  },
+  "COACH-4201": {
+    "n": "COACH-4201",
+    "brand": "Coach",
+    "officialNumber": "4201",
+    "a1": "1650 Premium Outlets Blvd., Suite 573",
+    "ca": "Aurora",
+    "sa": "IL",
+    "z": "60502",
+    "co": "US"
+  },
+  "COACH-4203": {
+    "n": "COACH-4203",
+    "brand": "Coach",
+    "officialNumber": "4203",
+    "a1": "5220 Fashion Outlets of Chicago, Space #2135",
+    "ca": "Rosemont",
+    "sa": "IL",
+    "z": "60018",
+    "co": "US"
+  },
+  "COACH-4250": {
+    "n": "COACH-4250",
+    "brand": "Coach",
+    "officialNumber": "4250",
+    "a1": "6245 North Old 27 Space A-30",
+    "ca": "Fremont",
+    "sa": "IN",
+    "z": "46737",
+    "co": "US"
+  },
+  "COACH-4251": {
+    "n": "COACH-4251",
+    "brand": "Coach",
+    "officialNumber": "4251",
+    "a1": "1670 Lighthouse Place",
+    "ca": "Michigan City",
+    "sa": "IN",
+    "z": "46360",
+    "co": "US"
+  },
+  "COACH-4252": {
+    "n": "COACH-4252",
+    "brand": "Coach",
+    "officialNumber": "4252",
+    "a1": "11811 N. Executive Dr., Space B-030",
+    "ca": "Edinburgh",
+    "sa": "IN",
+    "z": "46124",
+    "co": "US"
+  },
+  "COACH-4270": {
+    "n": "COACH-4270",
+    "brand": "Coach",
+    "officialNumber": "4270",
+    "a1": "1155 Buck Creek Road, Suite 530, Space #E530",
+    "ca": "Simpsonville",
+    "sa": "KY",
+    "z": "40067",
+    "co": "US"
+  },
+  "COACH-4300": {
+    "n": "COACH-4300",
+    "brand": "Coach",
+    "officialNumber": "4300",
+    "a1": "451 Tanger Drive, Suite# 451",
+    "ca": "Williamsburg",
+    "sa": "IA",
+    "z": "52361",
+    "co": "US"
+  },
+  "COACH-4301": {
+    "n": "COACH-4301",
+    "brand": "Coach",
+    "officialNumber": "4301",
+    "a1": "707 Bass Pro Drive NW, Suite 700",
+    "ca": "Altoona",
+    "sa": "IA",
+    "z": "50009",
+    "co": "US"
+  },
+  "COACH-4320": {
+    "n": "COACH-4320",
+    "brand": "Coach",
+    "officialNumber": "4320",
+    "a1": "2300 S. Tanger Blvd., Space #128",
+    "ca": "Gonzales",
+    "sa": "LA",
+    "z": "70737",
+    "co": "US"
+  },
+  "COACH-4321": {
+    "n": "COACH-4321",
+    "brand": "Coach",
+    "officialNumber": "4321",
+    "a1": "500 Port of New Orleans Place, #105, Space #105",
+    "ca": "New Orleans",
+    "sa": "LA",
+    "z": "70130",
+    "co": "US"
+  },
+  "COACH-4500": {
+    "n": "COACH-4500",
+    "brand": "Coach",
+    "officialNumber": "4500",
+    "a1": "One Freeport Village Station, Space 303S",
+    "ca": "Freeport",
+    "sa": "ME",
+    "z": "04032",
+    "co": "US"
+  },
+  "COACH-4501": {
+    "n": "COACH-4501",
+    "brand": "Coach",
+    "officialNumber": "4501",
+    "a1": "375 U.S. Route 1, Space 170, Space #T-170",
+    "ca": "Kittery",
+    "sa": "ME",
+    "z": "03904",
+    "co": "US"
+  },
+  "COACH-4600": {
+    "n": "COACH-4600",
+    "brand": "Coach",
+    "officialNumber": "4600",
+    "a1": "145 Premium Outlet Blvd",
+    "ca": "Lee",
+    "sa": "MA",
+    "z": "01238",
+    "co": "US"
+  },
+  "COACH-4601": {
+    "n": "COACH-4601",
+    "brand": "Coach",
+    "officialNumber": "4601",
+    "a1": "1 Premium Outlets Blvd., 455",
+    "ca": "Wrentham",
+    "sa": "MA",
+    "z": "02093",
+    "co": "US"
+  },
+  "COACH-4603": {
+    "n": "COACH-4603",
+    "brand": "Coach",
+    "officialNumber": "4603",
+    "a1": "250 Granite St, Space 2017",
+    "ca": "Braintree",
+    "sa": "MA",
+    "z": "02184",
+    "co": "US"
+  },
+  "COACH-4604": {
+    "n": "COACH-4604",
+    "brand": "Coach",
+    "officialNumber": "4604",
+    "a1": "561 Assembly Row",
+    "ca": "Somerville",
+    "sa": "MA",
+    "z": "02145",
+    "co": "US"
+  },
+  "COACH-4651": {
+    "n": "COACH-4651",
+    "brand": "Coach",
+    "officialNumber": "4651",
+    "a1": "12150  South Beyer Road, Space # F100",
+    "ca": "Birch Run",
+    "sa": "MI",
+    "z": "48415",
+    "co": "US"
+  },
+  "COACH-4652": {
+    "n": "COACH-4652",
+    "brand": "Coach",
+    "officialNumber": "4652",
+    "a1": "1475 N. Burkhart Rd., Space #C120",
+    "ca": "Howell",
+    "sa": "MI",
+    "z": "48855",
+    "co": "US"
+  },
+  "COACH-4653": {
+    "n": "COACH-4653",
+    "brand": "Coach",
+    "officialNumber": "4653",
+    "a1": "4054 Baldwin Road, Space #304",
+    "ca": "Auburn Hills",
+    "sa": "MI",
+    "z": "48326",
+    "co": "US"
+  },
+  "COACH-4655": {
+    "n": "COACH-4655",
+    "brand": "Coach",
+    "officialNumber": "4655",
+    "a1": "350 84th Street SW, Suite 925",
+    "ca": "Byron Center",
+    "sa": "MI",
+    "z": "49315",
+    "co": "US"
+  },
+  "COACH-4701": {
+    "n": "COACH-4701",
+    "brand": "Coach",
+    "officialNumber": "4701",
+    "a1": "400 Premium Outlets Blvd.",
+    "ca": "Hagerstown",
+    "sa": "MD",
+    "z": "21740",
+    "co": "US"
+  },
+  "COACH-4702": {
+    "n": "COACH-4702",
+    "brand": "Coach",
+    "officialNumber": "4702",
+    "a1": "417 Outlet Center Drive #A009, Space #A009",
+    "ca": "Queenstown",
+    "sa": "MD",
+    "z": "21658",
+    "co": "US"
+  },
+  "COACH-4703": {
+    "n": "COACH-4703",
+    "brand": "Coach",
+    "officialNumber": "4703",
+    "a1": "7000 Arundel Mills Circle, Space #428",
+    "ca": "Hanover",
+    "sa": "MD",
+    "z": "21076",
+    "co": "US"
+  },
+  "COACH-4705": {
+    "n": "COACH-4705",
+    "brand": "Coach",
+    "officialNumber": "4705",
+    "a1": "12741 Ocean Gateway, Space #670",
+    "ca": "Ocean City",
+    "sa": "MD",
+    "z": "21842",
+    "co": "US"
+  },
+  "COACH-4706": {
+    "n": "COACH-4706",
+    "brand": "Coach",
+    "officialNumber": "4706",
+    "a1": "6800 Oxon Hill Rd, Space #800, Space #800",
+    "ca": "National Harbor",
+    "sa": "MD",
+    "z": "20745",
+    "co": "US"
+  },
+  "COACH-4707": {
+    "n": "COACH-4707",
+    "brand": "Coach",
+    "officialNumber": "4707",
+    "a1": "22705 Clarksburg Rd., Space #560",
+    "ca": "Clarksburg",
+    "sa": "MD",
+    "z": "20871",
+    "co": "US"
+  },
+  "COACH-4802": {
+    "n": "COACH-4802",
+    "brand": "Coach",
+    "officialNumber": "4802",
+    "a1": "300 Tanger Blvd., Suite #226",
+    "ca": "Branson",
+    "sa": "MO",
+    "z": "65616",
+    "co": "US"
+  },
+  "COACH-4805": {
+    "n": "COACH-4805",
+    "brand": "Coach",
+    "officialNumber": "4805",
+    "a1": "18505 Outlet Blvd., Space 421, Space #421",
+    "ca": "Chesterfield",
+    "sa": "MO",
+    "z": "63005",
+    "co": "US"
+  },
+  "COACH-4850": {
+    "n": "COACH-4850",
+    "brand": "Coach",
+    "officialNumber": "4850",
+    "a1": "10450 Factory Shops Blvd.",
+    "ca": "Gulfport",
+    "sa": "MS",
+    "z": "39503",
+    "co": "US"
+  },
+  "COACH-4852": {
+    "n": "COACH-4852",
+    "brand": "Coach",
+    "officialNumber": "4852",
+    "a1": "200 Bass Pro Drive, Suite 588, Space #588",
+    "ca": "Pearl",
+    "sa": "MS",
+    "z": "39208",
+    "co": "US"
+  },
+  "COACH-4853": {
+    "n": "COACH-4853",
+    "brand": "Coach",
+    "officialNumber": "4853",
+    "a1": "5205 Airways Blvd., Space #900",
+    "ca": "Southaven",
+    "sa": "MS",
+    "z": "38671",
+    "co": "US"
+  },
+  "COACH-4900": {
+    "n": "COACH-4900",
+    "brand": "Coach",
+    "officialNumber": "4900",
+    "a1": "6415 Labeaux Avenue NE, SUITE B50",
+    "ca": "Albertville",
+    "sa": "MN",
+    "z": "55301",
+    "co": "US"
+  },
+  "COACH-4901": {
+    "n": "COACH-4901",
+    "brand": "Coach",
+    "officialNumber": "4901",
+    "a1": "3965 Eagan Outlets Parkway Suite #605, Suite #605",
+    "ca": "Eagan",
+    "sa": "MN",
+    "z": "55122",
+    "co": "US"
+  },
+  "COACH-4920": {
+    "n": "COACH-4920",
+    "brand": "Coach",
+    "officialNumber": "4920",
+    "a1": "21311 Nebraska Crossing Drive, Space #B101, Space #B101",
+    "ca": "Gretna",
+    "sa": "NE",
+    "z": "68028",
+    "co": "US"
+  },
+  "COACH-5000": {
+    "n": "COACH-5000",
+    "brand": "Coach",
+    "officialNumber": "5000",
+    "a1": "120 Laconia Road, Suite 126",
+    "ca": "Tilton",
+    "sa": "NH",
+    "z": "03276",
+    "co": "US"
+  },
+  "COACH-5002": {
+    "n": "COACH-5002",
+    "brand": "Coach",
+    "officialNumber": "5002",
+    "a1": "2 Common Court, Space #B50",
+    "ca": "North Conway",
+    "sa": "NH",
+    "z": "03860",
+    "co": "US"
+  },
+  "COACH-5003": {
+    "n": "COACH-5003",
+    "brand": "Coach",
+    "officialNumber": "5003",
+    "a1": "80 Premium Outlets Blvd., Suite 341",
+    "ca": "Merrimack",
+    "sa": "NH",
+    "z": "03054",
+    "co": "US"
+  },
+  "COACH-5050": {
+    "n": "COACH-5050",
+    "brand": "Coach",
+    "officialNumber": "5050",
+    "a1": "45 North Arkansas Avenue, Space #312",
+    "ca": "Atlantic City",
+    "sa": "NJ",
+    "z": "08401",
+    "co": "US"
+  },
+  "COACH-5051": {
+    "n": "COACH-5051",
+    "brand": "Coach",
+    "officialNumber": "5051",
+    "a1": "537 Monmouth Road, Space # 312",
+    "ca": "Jackson",
+    "sa": "NJ",
+    "z": "08527",
+    "co": "US"
+  },
+  "COACH-5054": {
+    "n": "COACH-5054",
+    "brand": "Coach",
+    "officialNumber": "5054",
+    "a1": "One Premium Outlets Blvd., Space #2400",
+    "ca": "Tinton Falls",
+    "sa": "NJ",
+    "z": "07753",
+    "co": "US"
+  },
+  "COACH-5055": {
+    "n": "COACH-5055",
+    "brand": "Coach",
+    "officialNumber": "5055",
+    "a1": "651 Kapkowski Road, space #2400",
+    "ca": "Elizabeth",
+    "sa": "NJ",
+    "z": "07201",
+    "co": "US"
+  },
+  "COACH-5056": {
+    "n": "COACH-5056",
+    "brand": "Coach",
+    "officialNumber": "5056",
+    "a1": "651 Kapkowski Road, Suite# 2024",
+    "ca": "Elizabeth",
+    "sa": "NJ",
+    "z": "07201",
+    "co": "US"
+  },
+  "COACH-5057": {
+    "n": "COACH-5057",
+    "brand": "Coach",
+    "officialNumber": "5057",
+    "a1": "100 Premium Outlet Drive, Suite 937",
+    "ca": "Blackwood",
+    "sa": "NJ",
+    "z": "08012",
+    "co": "US"
+  },
+  "COACH-5141": {
+    "n": "COACH-5141",
+    "brand": "Coach",
+    "officialNumber": "5141",
+    "a1": "785 S. Grand Central Parkway, Suite #2111",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89139",
+    "co": "US"
+  },
+  "COACH-5142": {
+    "n": "COACH-5142",
+    "brand": "Coach",
+    "officialNumber": "5142",
+    "a1": "7400 Las Vegas Blvd. South, Suite # 400",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89123",
+    "co": "US"
+  },
+  "COACH-5152": {
+    "n": "COACH-5152",
+    "brand": "Coach",
+    "officialNumber": "5152",
+    "a1": "303 Red Apple Court, Space #80A",
+    "ca": "Central Valley",
+    "sa": "NY",
+    "z": "10917",
+    "co": "US"
+  },
+  "COACH-5155": {
+    "n": "COACH-5155",
+    "brand": "Coach",
+    "officialNumber": "5155",
+    "a1": "1704 Military Drive, Space #80A",
+    "ca": "Niagara Falls",
+    "sa": "NY",
+    "z": "14304",
+    "co": "US"
+  },
+  "COACH-5156": {
+    "n": "COACH-5156",
+    "brand": "Coach",
+    "officialNumber": "5156",
+    "a1": "410 Tanger Mall Drive",
+    "ca": "Riverhead",
+    "sa": "NY",
+    "z": "11901",
+    "co": "US"
+  },
+  "COACH-5157": {
+    "n": "COACH-5157",
+    "brand": "Coach",
+    "officialNumber": "5157",
+    "a1": "655 Route 318, Suite B-081",
+    "ca": "Waterloo",
+    "sa": "NY",
+    "z": "13165",
+    "co": "US"
+  },
+  "COACH-5158": {
+    "n": "COACH-5158",
+    "brand": "Coach",
+    "officialNumber": "5158",
+    "a1": "1424 State Rte 9, Space #254",
+    "ca": "Lake George",
+    "sa": "NY",
+    "z": "12845",
+    "co": "US"
+  },
+  "COACH-5160": {
+    "n": "COACH-5160",
+    "brand": "Coach",
+    "officialNumber": "5160",
+    "a1": "254 Red Apple Court, Space #346",
+    "ca": "Central Valley",
+    "sa": "NY",
+    "z": "10917",
+    "co": "US"
+  },
+  "COACH-5162": {
+    "n": "COACH-5162",
+    "brand": "Coach",
+    "officialNumber": "5162",
+    "a1": "346 Arches Circle, space #L105",
+    "ca": "Deer Park",
+    "sa": "NY",
+    "z": "11729",
+    "co": "US"
+  },
+  "COACH-5164": {
+    "n": "COACH-5164",
+    "brand": "Coach",
+    "officialNumber": "5164",
+    "a1": "1 Destiny Drive, Space #L-105",
+    "ca": "Syracuse",
+    "sa": "NY",
+    "z": "13204",
+    "co": "US"
+  },
+  "COACH-5202": {
+    "n": "COACH-5202",
+    "brand": "Coach",
+    "officialNumber": "5202",
+    "a1": "1250 Outlet Center Drive, Space #275",
+    "ca": "Smithfield",
+    "sa": "NC",
+    "z": "27577",
+    "co": "US"
+  },
+  "COACH-5203": {
+    "n": "COACH-5203",
+    "brand": "Coach",
+    "officialNumber": "5203",
+    "a1": "8111 Concord Mills Blvd., Space #894",
+    "ca": "Concord",
+    "sa": "NC",
+    "z": "28027",
+    "co": "US"
+  },
+  "COACH-5204": {
+    "n": "COACH-5204",
+    "brand": "Coach",
+    "officialNumber": "5204",
+    "a1": "4000 Arrowhead Blvd, Suite 850",
+    "ca": "Mebane",
+    "sa": "NC",
+    "z": "27302",
+    "co": "US"
+  },
+  "COACH-5205": {
+    "n": "COACH-5205",
+    "brand": "Coach",
+    "officialNumber": "5205",
+    "a1": "5416 New Fashion Way Suite 850, Space #129",
+    "ca": "Charlotte",
+    "sa": "NC",
+    "z": "28278",
+    "co": "US"
+  },
+  "COACH-5206": {
+    "n": "COACH-5206",
+    "brand": "Coach",
+    "officialNumber": "5206",
+    "a1": "800 Brevard Road, Space 129",
+    "ca": "Asheville",
+    "sa": "NC",
+    "z": "28806",
+    "co": "US"
+  },
+  "COACH-5301": {
+    "n": "COACH-5301",
+    "brand": "Coach",
+    "officialNumber": "5301",
+    "a1": "549 S. Chillicothe Road, Space #360",
+    "ca": "Aurora",
+    "sa": "OH",
+    "z": "44202",
+    "co": "US"
+  },
+  "COACH-5302": {
+    "n": "COACH-5302",
+    "brand": "Coach",
+    "officialNumber": "5302",
+    "a1": "849 Premium Outlet Drive, Space #1090",
+    "ca": "Monroe",
+    "sa": "OH",
+    "z": "45050",
+    "co": "US"
+  },
+  "COACH-5304": {
+    "n": "COACH-5304",
+    "brand": "Coach",
+    "officialNumber": "5304",
+    "a1": "400 South Wilson Road, Space #F670",
+    "ca": "Sunbury",
+    "sa": "OH",
+    "z": "43074",
+    "co": "US"
+  },
+  "COACH-5350": {
+    "n": "COACH-5350",
+    "brand": "Coach",
+    "officialNumber": "5350",
+    "a1": "7634 W. Reno Avenue, Suite # 115",
+    "ca": "Oklahoma City",
+    "sa": "OK",
+    "z": "73127",
+    "co": "US"
+  },
+  "COACH-5352": {
+    "n": "COACH-5352",
+    "brand": "Coach",
+    "officialNumber": "5352",
+    "a1": "801 East Outlet Drive, Suite 8162",
+    "ca": "Jenks",
+    "sa": "OK",
+    "z": "74037",
+    "co": "US"
+  },
+  "COACH-5400": {
+    "n": "COACH-5400",
+    "brand": "Coach",
+    "officialNumber": "5400",
+    "a1": "1500 SE East Devils Lake Rd., Space #910",
+    "ca": "Lincoln City",
+    "sa": "OR",
+    "z": "97367",
+    "co": "US"
+  },
+  "COACH-5401": {
+    "n": "COACH-5401",
+    "brand": "Coach",
+    "officialNumber": "5401",
+    "a1": "1001 Arney Road, Space #118",
+    "ca": "Woodburn",
+    "sa": "OR",
+    "z": "97071",
+    "co": "US"
+  },
+  "COACH-5402": {
+    "n": "COACH-5402",
+    "brand": "Coach",
+    "officialNumber": "5402",
+    "a1": "450 NW 257th Ave, Suite 300",
+    "ca": "Troutdale",
+    "sa": "OR",
+    "z": "97060",
+    "co": "US"
+  },
+  "COACH-5450": {
+    "n": "COACH-5450",
+    "brand": "Coach",
+    "officialNumber": "5450",
+    "a1": "1911 Leesburg Road- Grove City Road, Suite D1",
+    "ca": "Grove City",
+    "sa": "PA",
+    "z": "16127",
+    "co": "US"
+  },
+  "COACH-5451": {
+    "n": "COACH-5451",
+    "brand": "Coach",
+    "officialNumber": "5451",
+    "a1": "5861 York Road, Suite G-05",
+    "ca": "Lahaska",
+    "sa": "PA",
+    "z": "18931",
+    "co": "US"
+  },
+  "COACH-5454": {
+    "n": "COACH-5454",
+    "brand": "Coach",
+    "officialNumber": "5454",
+    "a1": "1000 Premium Outlets Drive, Suite G-05",
+    "ca": "Tannersville",
+    "sa": "PA",
+    "z": "18372",
+    "co": "US"
+  },
+  "COACH-5455": {
+    "n": "COACH-5455",
+    "brand": "Coach",
+    "officialNumber": "5455",
+    "a1": "1001 A Stanley Tanger Blvd., Space #51",
+    "ca": "Lancaster",
+    "sa": "PA",
+    "z": "17602",
+    "co": "US"
+  },
+  "COACH-5456": {
+    "n": "COACH-5456",
+    "brand": "Coach",
+    "officialNumber": "5456",
+    "a1": "51 Outlet Square, Bldg 11, Suite 101",
+    "ca": "Hershey",
+    "sa": "PA",
+    "z": "17033",
+    "co": "US"
+  },
+  "COACH-5457": {
+    "n": "COACH-5457",
+    "brand": "Coach",
+    "officialNumber": "5457",
+    "a1": "18 Lightcap Road, Space 905",
+    "ca": "Pottstown",
+    "sa": "PA",
+    "z": "19464",
+    "co": "US"
+  },
+  "COACH-5458": {
+    "n": "COACH-5458",
+    "brand": "Coach",
+    "officialNumber": "5458",
+    "a1": "2200 Tanger Blvd., Space #205",
+    "ca": "Washington",
+    "sa": "PA",
+    "z": "15301",
+    "co": "US"
+  },
+  "COACH-5459": {
+    "n": "COACH-5459",
+    "brand": "Coach",
+    "officialNumber": "5459",
+    "a1": "77 Wind Creek Blvd., Space #1233",
+    "ca": "Bethlehem",
+    "sa": "PA",
+    "z": "18015",
+    "co": "US"
+  },
+  "COACH-5550": {
+    "n": "COACH-5550",
+    "brand": "Coach",
+    "officialNumber": "5550",
+    "a1": "4635 Factory Stores Blvd, Suite A160",
+    "ca": "Myrtle Beach",
+    "sa": "SC",
+    "z": "29579",
+    "co": "US"
+  },
+  "COACH-5551": {
+    "n": "COACH-5551",
+    "brand": "Coach",
+    "officialNumber": "5551",
+    "a1": "1414 Fording Island Road, Suite 800",
+    "ca": "Bluffton",
+    "sa": "SC",
+    "z": "29910",
+    "co": "US"
+  },
+  "COACH-5554": {
+    "n": "COACH-5554",
+    "brand": "Coach",
+    "officialNumber": "5554",
+    "a1": "10843 Kings Road, Suite #997",
+    "ca": "Myrtle Beach",
+    "sa": "SC",
+    "z": "29572",
+    "co": "US"
+  },
+  "COACH-5555": {
+    "n": "COACH-5555",
+    "brand": "Coach",
+    "officialNumber": "5555",
+    "a1": "4840 Tanger Outlet Blvd, Suite 1300",
+    "ca": "North Charleston",
+    "sa": "SC",
+    "z": "29418",
+    "co": "US"
+  },
+  "COACH-5653": {
+    "n": "COACH-5653",
+    "brand": "Coach",
+    "officialNumber": "5653",
+    "a1": "1645 Parkway, Space #634A",
+    "ca": "Sevierville",
+    "sa": "TN",
+    "z": "37862",
+    "co": "US"
+  },
+  "COACH-5654": {
+    "n": "COACH-5654",
+    "brand": "Coach",
+    "officialNumber": "5654",
+    "a1": "Opry Mills Drive, Suite 660",
+    "ca": "Nashville",
+    "sa": "TN",
+    "z": "37214",
+    "co": "US"
+  },
+  "COACH-5655": {
+    "n": "COACH-5655",
+    "brand": "Coach",
+    "officialNumber": "5655",
+    "a1": "4060 Cane Ridge Parkway, Building 3, Suite 325",
+    "ca": "Antioch",
+    "sa": "TN",
+    "z": "37013",
+    "co": "US"
+  },
+  "COACH-5700": {
+    "n": "COACH-5700",
+    "brand": "Coach",
+    "officialNumber": "5700",
+    "a1": "3939 IH 35 South, Suite 750",
+    "ca": "San Marcos",
+    "sa": "TX",
+    "z": "78666",
+    "co": "US"
+  },
+  "COACH-5701": {
+    "n": "COACH-5701",
+    "brand": "Coach",
+    "officialNumber": "5701",
+    "a1": "4401 N IH-35, Suite 610",
+    "ca": "Round Rock",
+    "sa": "TX",
+    "z": "78664",
+    "co": "US"
+  },
+  "COACH-5702": {
+    "n": "COACH-5702",
+    "brand": "Coach",
+    "officialNumber": "5702",
+    "a1": "5001 East Expressway 83, Space #E525",
+    "ca": "Mercedes",
+    "sa": "TX",
+    "z": "78570",
+    "co": "US"
+  },
+  "COACH-5703": {
+    "n": "COACH-5703",
+    "brand": "Coach",
+    "officialNumber": "5703",
+    "a1": "7051 S. Desert Blvd., #428",
+    "ca": "El Paso",
+    "sa": "TX",
+    "z": "79835",
+    "co": "US"
+  },
+  "COACH-5704": {
+    "n": "COACH-5704",
+    "brand": "Coach",
+    "officialNumber": "5704",
+    "a1": "29300 Hempstead Rd., Space 190",
+    "ca": "Cypress",
+    "sa": "TX",
+    "z": "77433",
+    "co": "US"
+  },
+  "COACH-5705": {
+    "n": "COACH-5705",
+    "brand": "Coach",
+    "officialNumber": "5705",
+    "a1": "820 West Stacy Road, Space #368",
+    "ca": "Allen",
+    "sa": "TX",
+    "z": "75013",
+    "co": "US"
+  },
+  "COACH-5706": {
+    "n": "COACH-5706",
+    "brand": "Coach",
+    "officialNumber": "5706",
+    "a1": "5000 Katy Mills Circle, Space #368",
+    "ca": "Katy",
+    "sa": "TX",
+    "z": "77494",
+    "co": "US"
+  },
+  "COACH-5707": {
+    "n": "COACH-5707",
+    "brand": "Coach",
+    "officialNumber": "5707",
+    "a1": "29300 Hempstead Rd, Space 422",
+    "ca": "Cypress",
+    "sa": "TX",
+    "z": "77433",
+    "co": "US"
+  },
+  "COACH-5709": {
+    "n": "COACH-5709",
+    "brand": "Coach",
+    "officialNumber": "5709",
+    "a1": "3000 Grapevine Mills Parkway, Space #220",
+    "ca": "Grapevine",
+    "sa": "TX",
+    "z": "76051",
+    "co": "US"
+  },
+  "COACH-5711": {
+    "n": "COACH-5711",
+    "brand": "Coach",
+    "officialNumber": "5711",
+    "a1": "2950 West I-20, Space #790",
+    "ca": "Grand Prairie",
+    "sa": "TX",
+    "z": "75052",
+    "co": "US"
+  },
+  "COACH-5712": {
+    "n": "COACH-5712",
+    "brand": "Coach",
+    "officialNumber": "5712",
+    "a1": "5885 Gulf Freeway, Space #790",
+    "ca": "Texas City",
+    "sa": "TX",
+    "z": "77591",
+    "co": "US"
+  },
+  "COACH-5713": {
+    "n": "COACH-5713",
+    "brand": "Coach",
+    "officialNumber": "5713",
+    "a1": "1600 Water Street, Suite G105A",
+    "ca": "Laredo",
+    "sa": "TX",
+    "z": "78040",
+    "co": "US"
+  },
+  "COACH-5714": {
+    "n": "COACH-5714",
+    "brand": "Coach",
+    "officialNumber": "5714",
+    "a1": "15853 North FWY, STE 1060",
+    "ca": "Fort Worth",
+    "sa": "TX",
+    "z": "76177-3325",
+    "co": "US"
+  },
+  "COACH-5751": {
+    "n": "COACH-5751",
+    "brand": "Coach",
+    "officialNumber": "5751",
+    "a1": "6699 N Landmark Dr, Space #400",
+    "ca": "Park City",
+    "sa": "UT",
+    "z": "84098",
+    "co": "US"
+  },
+  "COACH-5752": {
+    "n": "COACH-5752",
+    "brand": "Coach",
+    "officialNumber": "5752",
+    "a1": "3700 N. Cabelas Blvd., Space D79",
+    "ca": "Lehi",
+    "sa": "UT",
+    "z": "84043",
+    "co": "US"
+  },
+  "COACH-5850": {
+    "n": "COACH-5850",
+    "brand": "Coach",
+    "officialNumber": "5850",
+    "a1": "5715 Richmond Rd, Space #699",
+    "ca": "Williamsburg",
+    "sa": "VA",
+    "z": "23188",
+    "co": "US"
+  },
+  "COACH-5851": {
+    "n": "COACH-5851",
+    "brand": "Coach",
+    "officialNumber": "5851",
+    "a1": "241 Fort Evans Rd. NE, Space #699",
+    "ca": "Leesburg",
+    "sa": "VA",
+    "z": "20176",
+    "co": "US"
+  },
+  "COACH-5852": {
+    "n": "COACH-5852",
+    "brand": "Coach",
+    "officialNumber": "5852",
+    "a1": "2700 Potomac Mills Circle, Space #869",
+    "ca": "Woodbridge",
+    "sa": "VA",
+    "z": "22192",
+    "co": "US"
+  },
+  "COACH-5855": {
+    "n": "COACH-5855",
+    "brand": "Coach",
+    "officialNumber": "5855",
+    "a1": "Norkfolk Premium Outlets, Unit 225",
+    "ca": "Norfolk",
+    "sa": "VA",
+    "z": "23502",
+    "co": "US"
+  },
+  "COACH-5902": {
+    "n": "COACH-5902",
+    "brand": "Coach",
+    "officialNumber": "5902",
+    "a1": "10600 Quil Ceda Boulevard, Suite E",
+    "ca": "Tulalip",
+    "sa": "WA",
+    "z": "98271",
+    "co": "US"
+  },
+  "COACH-5903": {
+    "n": "COACH-5903",
+    "brand": "Coach",
+    "officialNumber": "5903",
+    "a1": "661 South Fork Avenue SW, Space #1310",
+    "ca": "North Bend",
+    "sa": "WA",
+    "z": "98045",
+    "co": "US"
+  },
+  "COACH-5904": {
+    "n": "COACH-5904",
+    "brand": "Coach",
+    "officialNumber": "5904",
+    "a1": "1310 Lum Road, Suite 1006",
+    "ca": "Centralia",
+    "sa": "WA",
+    "z": "98531",
+    "co": "US"
+  },
+  "COACH-5905": {
+    "n": "COACH-5905",
+    "brand": "Coach",
+    "officialNumber": "5905",
+    "a1": "1101 Outlet Collection Way, Suite 1006",
+    "ca": "Auburn",
+    "sa": "WA",
+    "z": "98001",
+    "co": "US"
+  },
+  "COACH-6001": {
+    "n": "COACH-6001",
+    "brand": "Coach",
+    "officialNumber": "6001",
+    "a1": "11601 108th Street, Suite #351",
+    "ca": "Pleasant Prairie",
+    "sa": "WI",
+    "z": "53158",
+    "co": "US"
+  },
+  "COACH-6002": {
+    "n": "COACH-6002",
+    "brand": "Coach",
+    "officialNumber": "6002",
+    "a1": "210 Gasser Road, Space #D40",
+    "ca": "Baraboo",
+    "sa": "WI",
+    "z": "53913",
+    "co": "US"
+  },
+  "COACH-6003": {
+    "n": "COACH-6003",
+    "brand": "Coach",
+    "officialNumber": "6003",
+    "a1": "622 W. Linmar Lane, Space #E-050",
+    "ca": "Johnson Creek",
+    "sa": "WI",
+    "z": "53038",
+    "co": "US"
+  },
+  "COACH-6004": {
+    "n": "COACH-6004",
+    "brand": "Coach",
+    "officialNumber": "6004",
+    "a1": "3001 S. Washburn Street, Space #E-050",
+    "ca": "Oshkosh",
+    "sa": "WI",
+    "z": "54904",
+    "co": "US"
+  },
+  "COACH-6100": {
+    "n": "COACH-6100",
+    "brand": "Coach",
+    "officialNumber": "6100",
+    "a1": "158 Cristo Street, Space 850",
+    "ca": "San Juan",
+    "sa": "PR",
+    "z": "00927",
+    "co": "US"
+  },
+  "COACH-6101": {
+    "n": "COACH-6101",
+    "brand": "Coach",
+    "officialNumber": "6101",
+    "a1": "1 Prime Outlets Blvd., G-101",
+    "ca": "Barceloneta",
+    "sa": "PR",
+    "z": "00617",
+    "co": "US"
+  },
+  "COACH-6153": {
+    "n": "COACH-6153",
+    "brand": "Coach",
+    "officialNumber": "6153",
+    "a1": "1855 Village West Parkway, Unit #2",
+    "ca": "Kansas City",
+    "sa": "KS",
+    "z": "66111",
+    "co": "US"
+  },
+  "COACH-6199": {
+    "n": "COACH-6199",
+    "brand": "Coach",
+    "officialNumber": "6199",
+    "a1": "10 Hudson Yards",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-7300": {
+    "n": "COACH-7300",
+    "brand": "Coach",
+    "officialNumber": "7300",
+    "a1": "755 Burrard Street, Space #242 A & B",
+    "ca": "Vancouver",
+    "sa": "BC",
+    "z": "V6Z 1X6",
+    "co": "CA"
+  },
+  "COACH-7301": {
+    "n": "COACH-7301",
+    "brand": "Coach",
+    "officialNumber": "7301",
+    "a1": "3401 Dufferin Street, Space #125",
+    "ca": "North York",
+    "sa": "ON",
+    "z": "M6A 2T9",
+    "co": "CA"
+  },
+  "COACH-7304": {
+    "n": "COACH-7304",
+    "brand": "Coach",
+    "officialNumber": "7304",
+    "a1": "218 Yonge Street, Space #102",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M5B 2H1",
+    "co": "CA"
+  },
+  "COACH-7306": {
+    "n": "COACH-7306",
+    "brand": "Coach",
+    "officialNumber": "7306",
+    "a1": "#2314, 8882-170 Street, Space #1183",
+    "ca": "Edmonton",
+    "sa": "AB",
+    "z": "T5T 4M2",
+    "co": "CA"
+  },
+  "COACH-7309": {
+    "n": "COACH-7309",
+    "brand": "Coach",
+    "officialNumber": "7309",
+    "a1": "4700 Kingsway, Space #D034",
+    "ca": "Burnaby",
+    "sa": "BC",
+    "z": "V5H 4M1",
+    "co": "CA"
+  },
+  "COACH-7310": {
+    "n": "COACH-7310",
+    "brand": "Coach",
+    "officialNumber": "7310",
+    "a1": "701 W Georgia Street, Space # R120",
+    "ca": "Vancouver",
+    "sa": "BC",
+    "z": "V7Y 1G5",
+    "co": "CA"
+  },
+  "COACH-7311": {
+    "n": "COACH-7311",
+    "brand": "Coach",
+    "officialNumber": "7311",
+    "a1": "50 Rideau Street Space # 344, Space 2-453",
+    "ca": "Ottawa",
+    "sa": "ON",
+    "z": "K1N 9J7",
+    "co": "CA"
+  },
+  "COACH-7313": {
+    "n": "COACH-7313",
+    "brand": "Coach",
+    "officialNumber": "7313",
+    "a1": "100 CITY CENTRE DRIVE, Space #710",
+    "ca": "Mississauga",
+    "sa": "ON",
+    "z": "L5B 2C9",
+    "co": "CA"
+  },
+  "COACH-7318": {
+    "n": "COACH-7318",
+    "brand": "Coach",
+    "officialNumber": "7318",
+    "a1": "900 MAPLE AVENUE, Space #160",
+    "ca": "Burlington",
+    "sa": "ON",
+    "z": "L7S 2J8",
+    "co": "CA"
+  },
+  "COACH-7321": {
+    "n": "COACH-7321",
+    "brand": "Coach",
+    "officialNumber": "7321",
+    "a1": "6455 MacLeod Trail SW, Space #375",
+    "ca": "Calgary",
+    "sa": "AB",
+    "z": "T2H 0K8",
+    "co": "CA"
+  },
+  "COACH-7323": {
+    "n": "COACH-7323",
+    "brand": "Coach",
+    "officialNumber": "7323",
+    "a1": "1485 Portage Avenue, Space #D019A",
+    "ca": "Winnipeg",
+    "sa": "MB",
+    "z": "R3G 0W4",
+    "co": "CA"
+  },
+  "COACH-7325": {
+    "n": "COACH-7325",
+    "brand": "Coach",
+    "officialNumber": "7325",
+    "a1": "3035 boulevard Le Carrefour, Space #2120",
+    "ca": "Laval",
+    "sa": "QC",
+    "z": "H7T 1C8",
+    "co": "CA"
+  },
+  "COACH-7326": {
+    "n": "COACH-7326",
+    "brand": "Coach",
+    "officialNumber": "7326",
+    "a1": "5000 Hwy 7-E, Space #H015",
+    "ca": "Markham",
+    "sa": "ON",
+    "z": "L3R 4M9",
+    "co": "CA"
+  },
+  "COACH-7327": {
+    "n": "COACH-7327",
+    "brand": "Coach",
+    "officialNumber": "7327",
+    "a1": "6815 Trans-Canada Highway, Space #1550B",
+    "ca": "Pointe-Claire",
+    "sa": "QC",
+    "z": "H9R 5J1",
+    "co": "CA"
+  },
+  "COACH-7328": {
+    "n": "COACH-7328",
+    "brand": "Coach",
+    "officialNumber": "7328",
+    "a1": "6551No. 3 Rd, Space #1550B",
+    "ca": "Richmond",
+    "sa": "BC",
+    "z": "V6Y 2B6",
+    "co": "CA"
+  },
+  "COACH-7329": {
+    "n": "COACH-7329",
+    "brand": "Coach",
+    "officialNumber": "7329",
+    "a1": "300 Borough Drive, Suite 221",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M1P 4P5",
+    "co": "CA"
+  },
+  "COACH-7330": {
+    "n": "COACH-7330",
+    "brand": "Coach",
+    "officialNumber": "7330",
+    "a1": "5050 Côte de Liesse, Postal Unit 1230",
+    "ca": "Montreal",
+    "sa": "QC",
+    "z": "H4P 0C9",
+    "co": "CA"
+  },
+  "COACH-7352": {
+    "n": "COACH-7352",
+    "brand": "Coach",
+    "officialNumber": "7352",
+    "a1": "261055 CrossIron Blvd., Space #202",
+    "ca": "Rocky View",
+    "sa": "AB",
+    "z": "T4A 0G3",
+    "co": "CA"
+  },
+  "COACH-7353": {
+    "n": "COACH-7353",
+    "brand": "Coach",
+    "officialNumber": "7353",
+    "a1": "1 Bass Pro Mills Drive, Suite 547",
+    "ca": "Vaughan",
+    "sa": "ON",
+    "z": "L4K 5W4",
+    "co": "CA"
+  },
+  "COACH-7354": {
+    "n": "COACH-7354",
+    "brand": "Coach",
+    "officialNumber": "7354",
+    "a1": "3311 Simcoe Road 89, space # J10",
+    "ca": "Cookstown",
+    "sa": "ON",
+    "z": "L0L 1L0",
+    "co": "CA"
+  },
+  "COACH-7355": {
+    "n": "COACH-7355",
+    "brand": "Coach",
+    "officialNumber": "7355",
+    "a1": "7500 Lundy's Lane, Space #A14",
+    "ca": "Niagara Falls",
+    "sa": "ON",
+    "z": "L2H 1G8",
+    "co": "CA"
+  },
+  "COACH-7357": {
+    "n": "COACH-7357",
+    "brand": "Coach",
+    "officialNumber": "7357",
+    "a1": "13850 Steeles Avenue West, Space #745, Space #745",
+    "ca": "Halton Hills",
+    "sa": "ON",
+    "z": "L7G 0G3",
+    "co": "CA"
+  },
+  "COACH-7358": {
+    "n": "COACH-7358",
+    "brand": "Coach",
+    "officialNumber": "7358",
+    "a1": "300 Taylor Road Space, Space #221",
+    "ca": "Niagara on the Lake",
+    "sa": "ON",
+    "z": "L0S 1J0",
+    "co": "CA"
+  },
+  "COACH-7359": {
+    "n": "COACH-7359",
+    "brand": "Coach",
+    "officialNumber": "7359",
+    "a1": "8555 Campeau Drive  Space # 810, Space #810",
+    "ca": "Ottawa",
+    "sa": "ON",
+    "z": "K2T 1B7",
+    "co": "CA"
+  },
+  "COACH-7360": {
+    "n": "COACH-7360",
+    "brand": "Coach",
+    "officialNumber": "7360",
+    "a1": "19001 Chemin Notre-Dame, Suite 424, Space #424",
+    "ca": "Mirabel",
+    "sa": "QC",
+    "z": "J7J 0T1",
+    "co": "CA"
+  },
+  "COACH-7361": {
+    "n": "COACH-7361",
+    "brand": "Coach",
+    "officialNumber": "7361",
+    "a1": "7899 Templeton Road, Space CRU081",
+    "ca": "Richmond",
+    "sa": "BC",
+    "z": "V5BOB7",
+    "co": "CA"
+  },
+  "COACH-7362": {
+    "n": "COACH-7362",
+    "brand": "Coach",
+    "officialNumber": "7362",
+    "a1": "5000 Canoe Pass Way, Space 178",
+    "ca": "Delta",
+    "sa": "BC",
+    "z": "V4M0B3",
+    "co": "CA"
+  },
+  "COACH-7363": {
+    "n": "COACH-7363",
+    "brand": "Coach",
+    "officialNumber": "7363",
+    "a1": "1 Outlet Collection Way, Edmonton International Airport, Suite 203",
+    "ca": "Edmonton",
+    "sa": "AB",
+    "z": "T9E 1J5",
+    "co": "CA"
+  },
+  "COACH-7399": {
+    "n": "COACH-7399",
+    "brand": "Coach",
+    "officialNumber": "7399",
+    "a1": "10 Hudson Yards",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-7599": {
+    "n": "COACH-7599",
+    "brand": "Coach",
+    "officialNumber": "7599",
+    "a1": "10 Hudson Yards",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "COACH-Training": {
+    "n": "COACH-Training",
+    "brand": "Coach",
+    "officialNumber": "Training",
+    "a1": "",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "KS-1800": {
+    "n": "KS-1800",
+    "brand": "Kate Spade",
+    "officialNumber": "1800",
+    "a1": "269 Red Apple Court",
+    "ca": "Central Valley",
+    "sa": "NY",
+    "z": "10917",
+    "co": "US"
+  },
+  "KS-1801": {
+    "n": "KS-1801",
+    "brand": "Kate Spade",
+    "officialNumber": "1801",
+    "a1": "3939 Ih-35 South, 1285",
+    "ca": "San Marcos",
+    "sa": "TX",
+    "z": "78666",
+    "co": "US"
+  },
+  "KS-1802": {
+    "n": "KS-1802",
+    "brand": "Kate Spade",
+    "officialNumber": "1802",
+    "a1": "1650 Premium Outlet Boulevard, 1021",
+    "ca": "Aurora",
+    "sa": "IL",
+    "z": "60502",
+    "co": "US"
+  },
+  "KS-1803": {
+    "n": "KS-1803",
+    "brand": "Kate Spade",
+    "officialNumber": "1803",
+    "a1": "1800 Sawgrass Mills Circle, 2610",
+    "ca": "Sunrise",
+    "sa": "FL",
+    "z": "33323",
+    "co": "US"
+  },
+  "KS-1804": {
+    "n": "KS-1804",
+    "brand": "Kate Spade",
+    "officialNumber": "1804",
+    "a1": "5703 Factory Shops Boulevard, 805",
+    "ca": "Ellenton",
+    "sa": "FL",
+    "z": "34222",
+    "co": "US"
+  },
+  "KS-1805": {
+    "n": "KS-1805",
+    "brand": "Kate Spade",
+    "officialNumber": "1805",
+    "a1": "1770 West Main Street, 208",
+    "ca": "Riverhead",
+    "sa": "NY",
+    "z": "11901",
+    "co": "US"
+  },
+  "KS-1806": {
+    "n": "KS-1806",
+    "brand": "Kate Spade",
+    "officialNumber": "1806",
+    "a1": "405 Outlet Center Drive",
+    "ca": "Queenstown",
+    "sa": "MD",
+    "z": "21658",
+    "co": "US"
+  },
+  "KS-1807": {
+    "n": "KS-1807",
+    "brand": "Kate Spade",
+    "officialNumber": "1807",
+    "a1": "1 Premium Outlets Boulevard, space 305",
+    "ca": "Wrentham",
+    "sa": "MA",
+    "z": "02093",
+    "co": "US"
+  },
+  "KS-1808": {
+    "n": "KS-1808",
+    "brand": "Kate Spade",
+    "officialNumber": "1808",
+    "a1": "10839 Kings Road, 740",
+    "ca": "Myrtle Beach",
+    "sa": "SC",
+    "z": "29572",
+    "co": "US"
+  },
+  "KS-1810": {
+    "n": "KS-1810",
+    "brand": "Kate Spade",
+    "officialNumber": "1810",
+    "a1": "241 Fort Evans Road NE, 900",
+    "ca": "Leesburg",
+    "sa": "VA",
+    "z": "20176",
+    "co": "US"
+  },
+  "KS-1812": {
+    "n": "KS-1812",
+    "brand": "Kate Spade",
+    "officialNumber": "1812",
+    "a1": "48650 Seminole Drive, 110",
+    "ca": "Cabazon",
+    "sa": "CA",
+    "z": "92230",
+    "co": "US"
+  },
+  "KS-1813": {
+    "n": "KS-1813",
+    "brand": "Kate Spade",
+    "officialNumber": "1813",
+    "a1": "950 Camarillo Center Drive, 986",
+    "ca": "Camarillo",
+    "sa": "CA",
+    "z": "93010",
+    "co": "US"
+  },
+  "KS-1815": {
+    "n": "KS-1815",
+    "brand": "Kate Spade",
+    "officialNumber": "1815",
+    "a1": "775 South Grand Central Parkway, 1380",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89106",
+    "co": "US"
+  },
+  "KS-1816": {
+    "n": "KS-1816",
+    "brand": "Kate Spade",
+    "officialNumber": "1816",
+    "a1": "18 W Lightcap Road, 740",
+    "ca": "Pottstown",
+    "sa": "PA",
+    "z": "19464",
+    "co": "US"
+  },
+  "KS-1817": {
+    "n": "KS-1817",
+    "brand": "Kate Spade",
+    "officialNumber": "1817",
+    "a1": "2796 Tanger Way, 106",
+    "ca": "Barstow",
+    "sa": "CA",
+    "z": "92311",
+    "co": "US"
+  },
+  "KS-1819": {
+    "n": "KS-1819",
+    "brand": "Kate Spade",
+    "officialNumber": "1819",
+    "a1": "35016 Midway Outlet Drive, 325",
+    "ca": "Rehoboth Beach",
+    "sa": "DE",
+    "z": "19971",
+    "co": "US"
+  },
+  "KS-1820": {
+    "n": "KS-1820",
+    "brand": "Kate Spade",
+    "officialNumber": "1820",
+    "a1": "29300 Hempstead Road, 419",
+    "ca": "Cypress",
+    "sa": "TX",
+    "z": "77433",
+    "co": "US"
+  },
+  "KS-1821": {
+    "n": "KS-1821",
+    "brand": "Kate Spade",
+    "officialNumber": "1821",
+    "a1": "10600 Quil Ceda Boulevard, 515",
+    "ca": "Tulalip",
+    "sa": "WA",
+    "z": "98271",
+    "co": "US"
+  },
+  "KS-1822": {
+    "n": "KS-1822",
+    "brand": "Kate Spade",
+    "officialNumber": "1822",
+    "a1": "21317 Nebraska Crossing Drive, E155",
+    "ca": "Gretna",
+    "sa": "NE",
+    "z": "68028",
+    "co": "US"
+  },
+  "KS-1823": {
+    "n": "KS-1823",
+    "brand": "Kate Spade",
+    "officialNumber": "1823",
+    "a1": "700 Prime Outlets Boulevard, 700A",
+    "ca": "Hagerstown",
+    "sa": "MD",
+    "z": "21740",
+    "co": "US"
+  },
+  "KS-1825": {
+    "n": "KS-1825",
+    "brand": "Kate Spade",
+    "officialNumber": "1825",
+    "a1": "4959 International Drive, 1A09",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32819",
+    "co": "US"
+  },
+  "KS-1826": {
+    "n": "KS-1826",
+    "brand": "Kate Spade",
+    "officialNumber": "1826",
+    "a1": "5645-120 Richmond Road, H-130",
+    "ca": "Williamsburg",
+    "sa": "VA",
+    "z": "23188",
+    "co": "US"
+  },
+  "KS-1827": {
+    "n": "KS-1827",
+    "brand": "Kate Spade",
+    "officialNumber": "1827",
+    "a1": "1215 The Arches Circle, 309",
+    "ca": "Deer Park",
+    "sa": "NY",
+    "z": "11729",
+    "co": "US"
+  },
+  "KS-1828": {
+    "n": "KS-1828",
+    "brand": "Kate Spade",
+    "officialNumber": "1828",
+    "a1": "1 Premium Outlet Boulevard, 760",
+    "ca": "Tinton Falls",
+    "sa": "NJ",
+    "z": "07753",
+    "co": "US"
+  },
+  "KS-1830": {
+    "n": "KS-1830",
+    "brand": "Kate Spade",
+    "officialNumber": "1830",
+    "a1": "800 Hwy 400 South, 890",
+    "ca": "Dawsonville",
+    "sa": "GA",
+    "z": "30534",
+    "co": "US"
+  },
+  "KS-1832": {
+    "n": "KS-1832",
+    "brand": "Kate Spade",
+    "officialNumber": "1832",
+    "a1": "20-A Killingworth Turnpike, 330",
+    "ca": "Clinton",
+    "sa": "CT",
+    "z": "06413",
+    "co": "US"
+  },
+  "KS-1833": {
+    "n": "KS-1833",
+    "brand": "Kate Spade",
+    "officialNumber": "1833",
+    "a1": "1758 Military Road, 122",
+    "ca": "Niagara Falls",
+    "sa": "NY",
+    "z": "14304",
+    "co": "US"
+  },
+  "KS-1836": {
+    "n": "KS-1836",
+    "brand": "Kate Spade",
+    "officialNumber": "1836",
+    "a1": "8300 Arroyo Circle, B130",
+    "ca": "Gilroy",
+    "sa": "CA",
+    "z": "95020",
+    "co": "US"
+  },
+  "KS-1840": {
+    "n": "KS-1840",
+    "brand": "Kate Spade",
+    "officialNumber": "1840",
+    "a1": "2950 West I-20, 475",
+    "ca": "Grand Prairie",
+    "sa": "TX",
+    "z": "75052",
+    "co": "US"
+  },
+  "KS-1841": {
+    "n": "KS-1841",
+    "brand": "Kate Spade",
+    "officialNumber": "1841",
+    "a1": "2920 Livermore Outlets Drive, 220",
+    "ca": "Livermore",
+    "sa": "CA",
+    "z": "94551",
+    "co": "US"
+  },
+  "KS-1842": {
+    "n": "KS-1842",
+    "brand": "Kate Spade",
+    "officialNumber": "1842",
+    "a1": "4840 Tanger Outlet Blvd, Suite1044",
+    "ca": "North Charleston",
+    "sa": "SC",
+    "z": "29418",
+    "co": "US"
+  },
+  "KS-1843": {
+    "n": "KS-1843",
+    "brand": "Kate Spade",
+    "officialNumber": "1843",
+    "a1": "5885 Gulf Freeway",
+    "ca": "Texas City",
+    "sa": "TX",
+    "z": "77592",
+    "co": "US"
+  },
+  "KS-1844": {
+    "n": "KS-1844",
+    "brand": "Kate Spade",
+    "officialNumber": "1844",
+    "a1": "4976 Premium Outlets Way",
+    "ca": "Chandler",
+    "sa": "AZ",
+    "z": "85226",
+    "co": "US"
+  },
+  "KS-1845": {
+    "n": "KS-1845",
+    "brand": "Kate Spade",
+    "officialNumber": "1845",
+    "a1": "915 Ridgewalk Parkway, 860",
+    "ca": "Woodstock",
+    "sa": "GA",
+    "z": "30188",
+    "co": "US"
+  },
+  "KS-1846": {
+    "n": "KS-1846",
+    "brand": "Kate Spade",
+    "officialNumber": "1846",
+    "a1": "10801 Corkscrew Road, 178",
+    "ca": "Estero",
+    "sa": "FL",
+    "z": "33928",
+    "co": "US"
+  },
+  "KS-1847": {
+    "n": "KS-1847",
+    "brand": "Kate Spade",
+    "officialNumber": "1847",
+    "a1": "18505 Outlet Boulevard, 418",
+    "ca": "Chesterfield",
+    "sa": "MO",
+    "z": "63005",
+    "co": "US"
+  },
+  "KS-1848": {
+    "n": "KS-1848",
+    "brand": "Kate Spade",
+    "officialNumber": "1848",
+    "a1": "5630 Paseo Del Norte, Suite 100, 108-D",
+    "ca": "Carlsbad",
+    "sa": "CA",
+    "z": "92008",
+    "co": "US"
+  },
+  "KS-1849": {
+    "n": "KS-1849",
+    "brand": "Kate Spade",
+    "officialNumber": "1849",
+    "a1": "100 Citadel Drive, Suite 616",
+    "ca": "Commerce",
+    "sa": "CA",
+    "z": "90040",
+    "co": "US"
+  },
+  "KS-1850": {
+    "n": "KS-1850",
+    "brand": "Kate Spade",
+    "officialNumber": "1850",
+    "a1": "1155 Buck Creek Road, E500",
+    "ca": "Simpsonville",
+    "sa": "KY",
+    "z": "40067",
+    "co": "US"
+  },
+  "KS-1851": {
+    "n": "KS-1851",
+    "brand": "Kate Spade",
+    "officialNumber": "1851",
+    "a1": "1600 Premium Outlets Boulevard, Suite 213",
+    "ca": "Norfolk",
+    "sa": "VA",
+    "z": "23502",
+    "co": "US"
+  },
+  "KS-1852": {
+    "n": "KS-1852",
+    "brand": "Kate Spade",
+    "officialNumber": "1852",
+    "a1": "13850 Steeles Avenue West, 703",
+    "ca": "Halton Hills",
+    "sa": "ON",
+    "z": "L7G 0J1",
+    "co": "CA"
+  },
+  "KS-1853": {
+    "n": "KS-1853",
+    "brand": "Kate Spade",
+    "officialNumber": "1853",
+    "a1": "1481 Retherford St, Space D045",
+    "ca": "Tulare",
+    "sa": "CA",
+    "z": "93274",
+    "co": "US"
+  },
+  "KS-1854": {
+    "n": "KS-1854",
+    "brand": "Kate Spade",
+    "officialNumber": "1854",
+    "a1": "1270 Fording Island Road, 302",
+    "ca": "Bluffton",
+    "sa": "SC",
+    "z": "29910",
+    "co": "US"
+  },
+  "KS-1855": {
+    "n": "KS-1855",
+    "brand": "Kate Spade",
+    "officialNumber": "1855",
+    "a1": "4000 Arrowhead Boulevard",
+    "ca": "Mebane",
+    "sa": "NC",
+    "z": "27302",
+    "co": "US"
+  },
+  "KS-1856": {
+    "n": "KS-1856",
+    "brand": "Kate Spade",
+    "officialNumber": "1856",
+    "a1": "455 Factory Shops Boulevard, 0",
+    "ca": "Gaffney",
+    "sa": "SC",
+    "z": "29341",
+    "co": "US"
+  },
+  "KS-1857": {
+    "n": "KS-1857",
+    "brand": "Kate Spade",
+    "officialNumber": "1857",
+    "a1": "455 Trolley Lane blvd, 590",
+    "ca": "Mashantucket",
+    "sa": "CT",
+    "z": "06338",
+    "co": "US"
+  },
+  "KS-1859": {
+    "n": "KS-1859",
+    "brand": "Kate Spade",
+    "officialNumber": "1859",
+    "a1": "8200 Vineland Avenue, 326",
+    "ca": "Orlando",
+    "sa": "FL",
+    "z": "32821",
+    "co": "US"
+  },
+  "KS-1860": {
+    "n": "KS-1860",
+    "brand": "Kate Spade",
+    "officialNumber": "1860",
+    "a1": "10562 Emerald Coast Parkway, 104",
+    "ca": "Destin",
+    "sa": "FL",
+    "z": "32550",
+    "co": "US"
+  },
+  "KS-1861": {
+    "n": "KS-1861",
+    "brand": "Kate Spade",
+    "officialNumber": "1861",
+    "a1": "5001 E Expressway 83, 834",
+    "ca": "Mercedes",
+    "sa": "TX",
+    "z": "78570",
+    "co": "US"
+  },
+  "KS-1862": {
+    "n": "KS-1862",
+    "brand": "Kate Spade",
+    "officialNumber": "1862",
+    "a1": "11211 120th Avenue, A025",
+    "ca": "Pleasant Prairie",
+    "sa": "WI",
+    "z": "53158",
+    "co": "US"
+  },
+  "KS-1863": {
+    "n": "KS-1863",
+    "brand": "Kate Spade",
+    "officialNumber": "1863",
+    "a1": "274 Nut Tree Road",
+    "ca": "Vacaville",
+    "sa": "CA",
+    "z": "95687",
+    "co": "US"
+  },
+  "KS-1864": {
+    "n": "KS-1864",
+    "brand": "Kate Spade",
+    "officialNumber": "1864",
+    "a1": "94-796 Lumiana Street, 307A",
+    "ca": "Waipahu",
+    "sa": "HI",
+    "z": "96797",
+    "co": "US"
+  },
+  "KS-1865": {
+    "n": "KS-1865",
+    "brand": "Kate Spade",
+    "officialNumber": "1865",
+    "a1": "1 Bass Pro Mills Drive, Unit 532A",
+    "ca": "Vaughan",
+    "sa": "ON",
+    "z": "l4K 5W4",
+    "co": "CA"
+  },
+  "KS-1866": {
+    "n": "KS-1866",
+    "brand": "Kate Spade",
+    "officialNumber": "1866",
+    "a1": "1000-7899 Templeton Station Road",
+    "ca": "Vancouver",
+    "sa": "BC",
+    "z": "V7B 0B7",
+    "co": "CA"
+  },
+  "KS-1867": {
+    "n": "KS-1867",
+    "brand": "Kate Spade",
+    "officialNumber": "1867",
+    "a1": "300 Taylor Road, 747B",
+    "ca": "Niagara on the Lake",
+    "sa": "ON",
+    "z": "L0S 1J0",
+    "co": "CA"
+  },
+  "KS-1870": {
+    "n": "KS-1870",
+    "brand": "Kate Spade",
+    "officialNumber": "1870",
+    "a1": "820 West Stacy Road, 104",
+    "ca": "Allen",
+    "sa": "TX",
+    "z": "75013",
+    "co": "US"
+  },
+  "KS-1871": {
+    "n": "KS-1871",
+    "brand": "Kate Spade",
+    "officialNumber": "1871",
+    "a1": "1000 Premium Outlets Drive, OFC",
+    "ca": "Tannersville",
+    "sa": "PA",
+    "z": "18372",
+    "co": "US"
+  },
+  "KS-1872": {
+    "n": "KS-1872",
+    "brand": "Kate Spade",
+    "officialNumber": "1872",
+    "a1": "2700 Potomac Mills Circle, 820",
+    "ca": "Woodbridge",
+    "sa": "VA",
+    "z": "22192",
+    "co": "US"
+  },
+  "KS-1873": {
+    "n": "KS-1873",
+    "brand": "Kate Spade",
+    "officialNumber": "1873",
+    "a1": "5000 Katy Mills Circle, 330",
+    "ca": "Katy",
+    "sa": "TX",
+    "z": "77494",
+    "co": "US"
+  },
+  "KS-1874": {
+    "n": "KS-1874",
+    "brand": "Kate Spade",
+    "officialNumber": "1874",
+    "a1": "5416 New Fashion Way, 815",
+    "ca": "Charlotte",
+    "sa": "NC",
+    "z": "28278",
+    "co": "US"
+  },
+  "KS-1875": {
+    "n": "KS-1875",
+    "brand": "Kate Spade",
+    "officialNumber": "1875",
+    "a1": "6800 N 95th Avenue, Space 300",
+    "ca": "Glendale",
+    "sa": "AZ",
+    "z": "85305",
+    "co": "US"
+  },
+  "KS-1876": {
+    "n": "KS-1876",
+    "brand": "Kate Spade",
+    "officialNumber": "1876",
+    "a1": "15841 North Freeway, SUITE 1110",
+    "ca": "Fort Worth",
+    "sa": "TX",
+    "z": "76177",
+    "co": "US"
+  },
+  "KS-1878": {
+    "n": "KS-1878",
+    "brand": "Kate Spade",
+    "officialNumber": "1878",
+    "a1": "801 East 103rd Street South, 8165",
+    "ca": "Jenks",
+    "sa": "OK",
+    "z": "74037",
+    "co": "US"
+  },
+  "KS-1879": {
+    "n": "KS-1879",
+    "brand": "Kate Spade",
+    "officialNumber": "1879",
+    "a1": "300 Tanger Blvd, Suite 545",
+    "ca": "Branson",
+    "sa": "MO",
+    "z": "65616",
+    "co": "US"
+  },
+  "KS-1880": {
+    "n": "KS-1880",
+    "brand": "Kate Spade",
+    "officialNumber": "1880",
+    "a1": "651 Kapkowski Road, Space 1234",
+    "ca": "Elizabeth",
+    "sa": "NJ",
+    "z": "07201",
+    "co": "US"
+  },
+  "KS-1881": {
+    "n": "KS-1881",
+    "brand": "Kate Spade",
+    "officialNumber": "1881",
+    "a1": "7400 South Las Vegas Boulevard, 56",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89123",
+    "co": "US"
+  },
+  "KS-1882": {
+    "n": "KS-1882",
+    "brand": "Kate Spade",
+    "officialNumber": "1882",
+    "a1": "1 Mills Circle, Space 831",
+    "ca": "Ontario",
+    "sa": "CA",
+    "z": "91764",
+    "co": "US"
+  },
+  "KS-1883": {
+    "n": "KS-1883",
+    "brand": "Kate Spade",
+    "officialNumber": "1883",
+    "a1": "22705 Clarksburg Road, 318",
+    "ca": "Clarksburg",
+    "sa": "MD",
+    "z": "20871",
+    "co": "US"
+  },
+  "KS-1884": {
+    "n": "KS-1884",
+    "brand": "Kate Spade",
+    "officialNumber": "1884",
+    "a1": "4201 Camino de la Plaza, Space 118",
+    "ca": "San Diego",
+    "sa": "CA",
+    "z": "92173",
+    "co": "US"
+  },
+  "KS-1885": {
+    "n": "KS-1885",
+    "brand": "Kate Spade",
+    "officialNumber": "1885",
+    "a1": "7000 Arundel Mills Circle, Suite 454",
+    "ca": "Hanover",
+    "sa": "MD",
+    "z": "21076",
+    "co": "US"
+  },
+  "KS-1886": {
+    "n": "KS-1886",
+    "brand": "Kate Spade",
+    "officialNumber": "1886",
+    "a1": "62 Outlet Square, Suite 62",
+    "ca": "Hershey",
+    "sa": "PA",
+    "z": "17033",
+    "co": "US"
+  },
+  "KS-1892": {
+    "n": "KS-1892",
+    "brand": "Kate Spade",
+    "officialNumber": "1892",
+    "a1": "14 N. Michigan Avenue, Suite 540",
+    "ca": "Atlantic City",
+    "sa": "NJ",
+    "z": "08401",
+    "co": "US"
+  },
+  "KS-1893": {
+    "n": "KS-1893",
+    "brand": "Kate Spade",
+    "officialNumber": "1893",
+    "a1": "6800 Oxon Hill Road, Suite 300",
+    "ca": "Oxon Hill",
+    "sa": "MD",
+    "z": "20745",
+    "co": "US"
+  },
+  "KS-1898": {
+    "n": "KS-1898",
+    "brand": "Kate Spade",
+    "officialNumber": "1898",
+    "a1": "7650 West Reno Avenue, SPC 840",
+    "ca": "Oklahoma City",
+    "sa": "OK",
+    "z": "73127",
+    "co": "US"
+  },
+  "KS-1899": {
+    "n": "KS-1899",
+    "brand": "Kate Spade",
+    "officialNumber": "1899",
+    "a1": "1645 Parkway, Suite 450",
+    "ca": "Sevierville",
+    "sa": "TN",
+    "z": "37862",
+    "co": "US"
+  },
+  "KS-1900": {
+    "n": "KS-1900",
+    "brand": "Kate Spade",
+    "officialNumber": "1900",
+    "a1": "1000 Tanger Drive, 505",
+    "ca": "Locust Grove",
+    "sa": "GA",
+    "z": "30248",
+    "co": "US"
+  },
+  "KS-1901": {
+    "n": "KS-1901",
+    "brand": "Kate Spade",
+    "officialNumber": "1901",
+    "a1": "1100 Cornerstone Boulevard, SPC 640",
+    "ca": "Daytona Beach",
+    "sa": "FL",
+    "z": "32117",
+    "co": "US"
+  },
+  "KS-1902": {
+    "n": "KS-1902",
+    "brand": "Kate Spade",
+    "officialNumber": "1902",
+    "a1": "2200 Tanger Boulevard, SPC 955",
+    "ca": "Washington",
+    "sa": "PA",
+    "z": "15301",
+    "co": "US"
+  },
+  "KS-1903": {
+    "n": "KS-1903",
+    "brand": "Kate Spade",
+    "officialNumber": "1903",
+    "a1": "1847 Village West Parkway, K-127",
+    "ca": "Kansas City",
+    "sa": "KS",
+    "z": "66111",
+    "co": "US"
+  },
+  "KS-1904": {
+    "n": "KS-1904",
+    "brand": "Kate Spade",
+    "officialNumber": "1904",
+    "a1": "400 South Wilson Road, SPC 580",
+    "ca": "Sunbury",
+    "sa": "OH",
+    "z": "43074",
+    "co": "US"
+  },
+  "KS-1906": {
+    "n": "KS-1906",
+    "brand": "Kate Spade",
+    "officialNumber": "1906",
+    "a1": "5050 Factory Shops Boulevard, Suite 464",
+    "ca": "Castle Rock",
+    "sa": "CO",
+    "z": "80108",
+    "co": "US"
+  },
+  "KS-1907": {
+    "n": "KS-1907",
+    "brand": "Kate Spade",
+    "officialNumber": "1907",
+    "a1": "629 Factory Stores Blvd, Suite 835",
+    "ca": "Napa",
+    "sa": "CA",
+    "z": "94558",
+    "co": "US"
+  },
+  "KS-1908": {
+    "n": "KS-1908",
+    "brand": "Kate Spade",
+    "officialNumber": "1908",
+    "a1": "5701 Outlets at Tejon Parkway, Suite 930",
+    "ca": "Tejon Ranch",
+    "sa": "CA",
+    "z": "93203",
+    "co": "US"
+  },
+  "KS-1909": {
+    "n": "KS-1909",
+    "brand": "Kate Spade",
+    "officialNumber": "1909",
+    "a1": "80 Premium Outlets Boulevard, 279",
+    "ca": "Merrimack",
+    "sa": "NH",
+    "z": "03054",
+    "co": "US"
+  },
+  "KS-1910": {
+    "n": "KS-1910",
+    "brand": "Kate Spade",
+    "officialNumber": "1910",
+    "a1": "616 Premium Outlets Drive",
+    "ca": "Monroe",
+    "sa": "OH",
+    "z": "45050",
+    "co": "US"
+  },
+  "KS-1911": {
+    "n": "KS-1911",
+    "brand": "Kate Spade",
+    "officialNumber": "1911",
+    "a1": "3205 Outlet Drive, Space A60",
+    "ca": "Edinburgh",
+    "sa": "IN",
+    "z": "46124",
+    "co": "US"
+  },
+  "KS-1912": {
+    "n": "KS-1912",
+    "brand": "Kate Spade",
+    "officialNumber": "1912",
+    "a1": "13000 Folsom Boulevard, TBD",
+    "ca": "Folsom",
+    "sa": "CA",
+    "z": "95630",
+    "co": "US"
+  },
+  "KS-1913": {
+    "n": "KS-1913",
+    "brand": "Kate Spade",
+    "officialNumber": "1913",
+    "a1": "1 Outlet Collection Way, Unit 204",
+    "ca": "Edmonton",
+    "sa": "AB",
+    "z": "T9E 1J5",
+    "co": "CA"
+  },
+  "KS-1914": {
+    "n": "KS-1914",
+    "brand": "Kate Spade",
+    "officialNumber": "1914",
+    "a1": "261055 CrossIron Boulevard, Unit 155",
+    "ca": "Rocky View",
+    "sa": "AB",
+    "z": "T4A 0G3",
+    "co": "CA"
+  },
+  "KS-1915": {
+    "n": "KS-1915",
+    "brand": "Kate Spade",
+    "officialNumber": "1915",
+    "a1": "555 Sterling Lyon Parkway, Space 324",
+    "ca": "Winnipeg",
+    "sa": "MB",
+    "z": "R3P 2T3",
+    "co": "CA"
+  },
+  "KS-1917": {
+    "n": "KS-1917",
+    "brand": "Kate Spade",
+    "officialNumber": "1917",
+    "a1": "333 Five Cities Drive, Space 103",
+    "ca": "Pismo Beach",
+    "sa": "CA",
+    "z": "93449",
+    "co": "US"
+  },
+  "KS-1918": {
+    "n": "KS-1918",
+    "brand": "Kate Spade",
+    "officialNumber": "1918",
+    "a1": "8111 Concord Mills Boulevard, Suite 266",
+    "ca": "Concho Valley",
+    "sa": "NC",
+    "z": "28027",
+    "co": "US"
+  },
+  "KS-1919": {
+    "n": "KS-1919",
+    "brand": "Kate Spade",
+    "officialNumber": "1919",
+    "a1": "19001 Chemin Notre Dame, Suite 418",
+    "ca": "Mirabel",
+    "sa": "QC",
+    "z": "J7J 0T1",
+    "co": "CA"
+  },
+  "KS-1924": {
+    "n": "KS-1924",
+    "brand": "Kate Spade",
+    "officialNumber": "1924",
+    "a1": "12240 South Beyer Road, Space F015",
+    "ca": "Birch Run",
+    "sa": "MI",
+    "z": "48415",
+    "co": "US"
+  },
+  "KS-1925": {
+    "n": "KS-1925",
+    "brand": "Kate Spade",
+    "officialNumber": "1925",
+    "a1": "1911 Leesburg Grove City Road, Space 603",
+    "ca": "Grove City",
+    "sa": "PA",
+    "z": "16127",
+    "co": "US"
+  },
+  "KS-1927": {
+    "n": "KS-1927",
+    "brand": "Kate Spade",
+    "officialNumber": "1927",
+    "a1": "537 Monmouth Road, Suite 302",
+    "ca": "Jackson",
+    "sa": "NJ",
+    "z": "08527",
+    "co": "US"
+  },
+  "KS-1928": {
+    "n": "KS-1928",
+    "brand": "Kate Spade",
+    "officialNumber": "1928",
+    "a1": "4002 Baldwin Road, 215",
+    "ca": "Auburn Hills",
+    "sa": "MI",
+    "z": "48326",
+    "co": "US"
+  },
+  "KS-1929": {
+    "n": "KS-1929",
+    "brand": "Kate Spade",
+    "officialNumber": "1929",
+    "a1": "2601 S. McKenzie Street, 104",
+    "ca": "Foley",
+    "sa": "AL",
+    "z": "36535",
+    "co": "US"
+  },
+  "KS-1930": {
+    "n": "KS-1930",
+    "brand": "Kate Spade",
+    "officialNumber": "1930",
+    "a1": "6415 Labeaux NE, C060",
+    "ca": "Albertville",
+    "sa": "MN",
+    "z": "55301",
+    "co": "US"
+  },
+  "KS-1931": {
+    "n": "KS-1931",
+    "brand": "Kate Spade",
+    "officialNumber": "1931",
+    "a1": "350 84th Street SW, 1095",
+    "ca": "Byron Center",
+    "sa": "MI",
+    "z": "49315",
+    "co": "US"
+  },
+  "KS-1932": {
+    "n": "KS-1932",
+    "brand": "Kate Spade",
+    "officialNumber": "1932",
+    "a1": "305 Opry Mills Drive, 705",
+    "ca": "Nashville",
+    "sa": "TN",
+    "z": "37214",
+    "co": "US"
+  },
+  "KS-1937": {
+    "n": "KS-1937",
+    "brand": "Kate Spade",
+    "officialNumber": "1937",
+    "a1": "2416 Grand Cypress Drive, Suite 306",
+    "ca": "Lutz",
+    "sa": "FL",
+    "z": "33559",
+    "co": "US"
+  },
+  "KS-1938": {
+    "n": "KS-1938",
+    "brand": "Kate Spade",
+    "officialNumber": "1938",
+    "a1": "5205 Airways Boulevard, 530",
+    "ca": "Southaven",
+    "sa": "MS",
+    "z": "38671",
+    "co": "US"
+  },
+  "KS-1939": {
+    "n": "KS-1939",
+    "brand": "Kate Spade",
+    "officialNumber": "1939",
+    "a1": "1101 Outlet Collection Way, SPC 1025",
+    "ca": "Auburn",
+    "sa": "WA",
+    "z": "98001",
+    "co": "US"
+  },
+  "KS-1940": {
+    "n": "KS-1940",
+    "brand": "Kate Spade",
+    "officialNumber": "1940",
+    "a1": "8555 Campeau Drive, Suite 965",
+    "ca": "Ottawa",
+    "sa": "ON",
+    "z": "K2T 0K5",
+    "co": "CA"
+  },
+  "KS-3035": {
+    "n": "KS-3035",
+    "brand": "Kate Spade",
+    "officialNumber": "3035",
+    "a1": "1520 East Buena Vista Drive, B06S-101",
+    "ca": "Lake Buena Vista",
+    "sa": "FL",
+    "z": "32830",
+    "co": "US"
+  },
+  "KS-3038": {
+    "n": "KS-3038",
+    "brand": "Kate Spade",
+    "officialNumber": "3038",
+    "a1": "8702 Keystone Crossing Boulevard, 27A",
+    "ca": "Indianapolis",
+    "sa": "IN",
+    "z": "46240",
+    "co": "US"
+  },
+  "KS-3039": {
+    "n": "KS-3039",
+    "brand": "Kate Spade",
+    "officialNumber": "3039",
+    "a1": "3377 Las Vegas Boulevard South, 2938",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "KS-3041": {
+    "n": "KS-3041",
+    "brand": "Kate Spade",
+    "officialNumber": "3041",
+    "a1": "3605 Galleria",
+    "ca": "Edina",
+    "sa": "MN",
+    "z": "55435",
+    "co": "US"
+  },
+  "KS-3052": {
+    "n": "KS-3052",
+    "brand": "Kate Spade",
+    "officialNumber": "3052",
+    "a1": "7875 Montgomery Road",
+    "ca": "Cincinnati",
+    "sa": "OH",
+    "z": "45236",
+    "co": "US"
+  },
+  "KS-3057": {
+    "n": "KS-3057",
+    "brand": "Kate Spade",
+    "officialNumber": "3057",
+    "a1": "401 Oakbrook Center",
+    "ca": "Oakbrook",
+    "sa": "IL",
+    "z": "60523",
+    "co": "US"
+  },
+  "KS-3059": {
+    "n": "KS-3059",
+    "brand": "Kate Spade",
+    "officialNumber": "3059",
+    "a1": "2001 International Drive, 1430",
+    "ca": "McLean",
+    "sa": "VA",
+    "z": "22102",
+    "co": "US"
+  },
+  "KS-3061": {
+    "n": "KS-3061",
+    "brand": "Kate Spade",
+    "officialNumber": "3061",
+    "a1": "900 N Michigan Avenue, L1-10",
+    "ca": "Chicago",
+    "sa": "IL",
+    "z": "60611",
+    "co": "US"
+  },
+  "KS-3063": {
+    "n": "KS-3063",
+    "brand": "Kate Spade",
+    "officialNumber": "3063",
+    "a1": "106 South Ave",
+    "ca": "Bloomington",
+    "sa": "MN",
+    "z": "55425",
+    "co": "US"
+  },
+  "KS-3064": {
+    "n": "KS-3064",
+    "brand": "Kate Spade",
+    "officialNumber": "3064",
+    "a1": "994 Palmer Alley NW",
+    "ca": "Washington",
+    "sa": "DC",
+    "z": "20001",
+    "co": "US"
+  },
+  "KS-3065": {
+    "n": "KS-3065",
+    "brand": "Kate Spade",
+    "officialNumber": "3065",
+    "a1": "731 Main Street, Unit 130",
+    "ca": "West Vancouver",
+    "sa": "BC",
+    "z": "V7T 0A5",
+    "co": "CA"
+  },
+  "KS-3067": {
+    "n": "KS-3067",
+    "brand": "Kate Spade",
+    "officialNumber": "3067",
+    "a1": "2850- 8882 170 St NW, 2850",
+    "ca": "Edmonton",
+    "sa": "AB",
+    "z": "T5T 4J2",
+    "co": "CA"
+  },
+  "KS-3068": {
+    "n": "KS-3068",
+    "brand": "Kate Spade",
+    "officialNumber": "3068",
+    "a1": "701 West Georgia Street, R104",
+    "ca": "Vancouver",
+    "sa": "BC",
+    "z": "V7Y 1G5",
+    "co": "CA"
+  },
+  "KS-3069": {
+    "n": "KS-3069",
+    "brand": "Kate Spade",
+    "officialNumber": "3069",
+    "a1": "50 Rideau Street, 333B",
+    "ca": "Ottawa",
+    "sa": "ON",
+    "z": "K1N 9J7",
+    "co": "CA"
+  },
+  "KS-3084": {
+    "n": "KS-3084",
+    "brand": "Kate Spade",
+    "officialNumber": "3084",
+    "a1": "1961 Chain Bridge Road, Mall #O6U",
+    "ca": "McLean",
+    "sa": "VA",
+    "z": "22102",
+    "co": "US"
+  },
+  "KS-3102": {
+    "n": "KS-3102",
+    "brand": "Kate Spade",
+    "officialNumber": "3102",
+    "a1": "185 Greenwich Street, LL 2045",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10007",
+    "co": "US"
+  },
+  "KS-3103": {
+    "n": "KS-3103",
+    "brand": "Kate Spade",
+    "officialNumber": "3103",
+    "a1": "1200 Morris Turnpike, C232",
+    "ca": "Short Hills",
+    "sa": "NJ",
+    "z": "07078",
+    "co": "US"
+  },
+  "KS-3108": {
+    "n": "KS-3108",
+    "brand": "Kate Spade",
+    "officialNumber": "3108",
+    "a1": "3500 Peachtree Road NE, A-9A",
+    "ca": "Atlanta",
+    "sa": "GA",
+    "z": "30326",
+    "co": "US"
+  },
+  "KS-3110": {
+    "n": "KS-3110",
+    "brand": "Kate Spade",
+    "officialNumber": "3110",
+    "a1": "8687 N Central Expressway, N2-1222",
+    "ca": "Dallas",
+    "sa": "TX",
+    "z": "75225",
+    "co": "US"
+  },
+  "KS-3111": {
+    "n": "KS-3111",
+    "brand": "Kate Spade",
+    "officialNumber": "3111",
+    "a1": "7400 San Pedro Avenue, 32",
+    "ca": "San Antonio",
+    "sa": "TX",
+    "z": "78216",
+    "co": "US"
+  },
+  "KS-3114": {
+    "n": "KS-3114",
+    "brand": "Kate Spade",
+    "officialNumber": "3114",
+    "a1": "3393 Peachtree Rd NE, #3062A",
+    "ca": "Atlanta",
+    "sa": "GA",
+    "z": "30326",
+    "co": "US"
+  },
+  "KS-3127": {
+    "n": "KS-3127",
+    "brand": "Kate Spade",
+    "officialNumber": "3127",
+    "a1": "3401 Dufferin Street, 159",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M6A 3A1",
+    "co": "CA"
+  },
+  "KS-3132": {
+    "n": "KS-3132",
+    "brand": "Kate Spade",
+    "officialNumber": "3132",
+    "a1": "511 Westfarms Mall, Suite C230",
+    "ca": "Farmington",
+    "sa": "CT",
+    "z": "06032",
+    "co": "US"
+  },
+  "KS-3134": {
+    "n": "KS-3134",
+    "brand": "Kate Spade",
+    "officialNumber": "3134",
+    "a1": "27500 Novi Road, Suite E-223",
+    "ca": "Novi",
+    "sa": "MI",
+    "z": "48377",
+    "co": "US"
+  },
+  "KS-3141": {
+    "n": "KS-3141",
+    "brand": "Kate Spade",
+    "officialNumber": "3141",
+    "a1": "220 Yonge Street, Suite C026",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M5B 2H1",
+    "co": "CA"
+  },
+  "KS-3142": {
+    "n": "KS-3142",
+    "brand": "Kate Spade",
+    "officialNumber": "3142",
+    "a1": "100 City Centre Drive, Unit 2-462",
+    "ca": "Mississauga",
+    "sa": "ON",
+    "z": "L5B 2C9",
+    "co": "CA"
+  },
+  "KS-3143": {
+    "n": "KS-3143",
+    "brand": "Kate Spade",
+    "officialNumber": "3143",
+    "a1": "25 The West Mall",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M9C 1B8",
+    "co": "CA"
+  },
+  "KS-3144": {
+    "n": "KS-3144",
+    "brand": "Kate Spade",
+    "officialNumber": "3144",
+    "a1": "1151 Galleria Blvd, Suite 1055",
+    "ca": "Roseville",
+    "sa": "CA",
+    "z": "95678",
+    "co": "US"
+  },
+  "KS-3180": {
+    "n": "KS-3180",
+    "brand": "Kate Spade",
+    "officialNumber": "3180",
+    "a1": "6455 Macleod Trail SouthWest, 1105",
+    "ca": "Calgary",
+    "sa": "AB",
+    "z": "T2H 0K8",
+    "co": "CA"
+  },
+  "KS-3182": {
+    "n": "KS-3182",
+    "brand": "Kate Spade",
+    "officialNumber": "3182",
+    "a1": "630 Old Country Road, Suite 3050",
+    "ca": "Garden City",
+    "sa": "NY",
+    "z": "11530",
+    "co": "US"
+  },
+  "KS-3183": {
+    "n": "KS-3183",
+    "brand": "Kate Spade",
+    "officialNumber": "3183",
+    "a1": "3333 Bristol Street, Suite 2849",
+    "ca": "Costa Mesa",
+    "sa": "CA",
+    "z": "92626",
+    "co": "US"
+  },
+  "KS-3184": {
+    "n": "KS-3184",
+    "brand": "Kate Spade",
+    "officialNumber": "3184",
+    "a1": "3000 East First Avenue, Suite 277",
+    "ca": "Denver",
+    "sa": "CO",
+    "z": "80206",
+    "co": "US"
+  },
+  "KS-3186": {
+    "n": "KS-3186",
+    "brand": "Kate Spade",
+    "officialNumber": "3186",
+    "a1": "10250 Santa Monica Boulevard, Space #1910",
+    "ca": "Los Angeles",
+    "sa": "CA",
+    "z": "90067",
+    "co": "US"
+  },
+  "KS-3188": {
+    "n": "KS-3188",
+    "brand": "Kate Spade",
+    "officialNumber": "3188",
+    "a1": "800 Boylston Street, Suite 133",
+    "ca": "Boston",
+    "sa": "MA",
+    "z": "02199",
+    "co": "US"
+  },
+  "KS-3189": {
+    "n": "KS-3189",
+    "brand": "Kate Spade",
+    "officialNumber": "3189",
+    "a1": "21540 Hawthorne Boulevard, Suite 414D",
+    "ca": "Torrance",
+    "sa": "CA",
+    "z": "90503",
+    "co": "US"
+  },
+  "KS-3200": {
+    "n": "KS-3200",
+    "brand": "Kate Spade",
+    "officialNumber": "3200",
+    "a1": "454 Broome Street",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10013",
+    "co": "US"
+  },
+  "KS-3206": {
+    "n": "KS-3206",
+    "brand": "Kate Spade",
+    "officialNumber": "3206",
+    "a1": "3034 M Street NW",
+    "ca": "Washington",
+    "sa": "DC",
+    "z": "20007",
+    "co": "US"
+  },
+  "KS-3208": {
+    "n": "KS-3208",
+    "brand": "Kate Spade",
+    "officialNumber": "3208",
+    "a1": "5085 Westheimer Road, C2570",
+    "ca": "Houston",
+    "sa": "TX",
+    "z": "77056",
+    "co": "US"
+  },
+  "KS-3209": {
+    "n": "KS-3209",
+    "brand": "Kate Spade",
+    "officialNumber": "3209",
+    "a1": "4400 Sharon Road, M13A",
+    "ca": "Charlotte",
+    "sa": "NC",
+    "z": "28211",
+    "co": "US"
+  },
+  "KS-3215": {
+    "n": "KS-3215",
+    "brand": "Kate Spade",
+    "officialNumber": "3215",
+    "a1": "7014 East Camelback Road, 1127",
+    "ca": "Scottsdale",
+    "sa": "AZ",
+    "z": "85251",
+    "co": "US"
+  },
+  "KS-3216": {
+    "n": "KS-3216",
+    "brand": "Kate Spade",
+    "officialNumber": "3216",
+    "a1": "2800 West Big Beaver Road, R246",
+    "ca": "Troy",
+    "sa": "MI",
+    "z": "48084",
+    "co": "US"
+  },
+  "KS-3220": {
+    "n": "KS-3220",
+    "brand": "Kate Spade",
+    "officialNumber": "3220",
+    "a1": "2233 Kalakaua Avenue, 117",
+    "ca": "Honolulu",
+    "sa": "HI",
+    "z": "96815",
+    "co": "US"
+  },
+  "KS-3222": {
+    "n": "KS-3222",
+    "brand": "Kate Spade",
+    "officialNumber": "3222",
+    "a1": "11800 West Broad Street, 1132",
+    "ca": "Richmond",
+    "sa": "VA",
+    "z": "23233",
+    "co": "US"
+  },
+  "KS-3224": {
+    "n": "KS-3224",
+    "brand": "Kate Spade",
+    "officialNumber": "3224",
+    "a1": "2855 Stevens Creek Blvd., STE 1053",
+    "ca": "Santa Clara",
+    "sa": "CA",
+    "z": "95050",
+    "co": "US"
+  },
+  "KS-3228": {
+    "n": "KS-3228",
+    "brand": "Kate Spade",
+    "officialNumber": "3228",
+    "a1": "75 Middlesex Turnpike, 1203",
+    "ca": "Burlington",
+    "sa": "MA",
+    "z": "01803",
+    "co": "US"
+  },
+  "KS-3229": {
+    "n": "KS-3229",
+    "brand": "Kate Spade",
+    "officialNumber": "3229",
+    "a1": "845 Market Street, 108",
+    "ca": "San Francisco",
+    "sa": "CA",
+    "z": "94103",
+    "co": "US"
+  },
+  "KS-3247": {
+    "n": "KS-3247",
+    "brand": "Kate Spade",
+    "officialNumber": "3247",
+    "a1": "7007 Friars Road, 845",
+    "ca": "San Diego",
+    "sa": "CA",
+    "z": "92108",
+    "co": "US"
+  },
+  "KS-3251": {
+    "n": "KS-3251",
+    "brand": "Kate Spade",
+    "officialNumber": "3251",
+    "a1": "1000 Ross Park Mall Drive",
+    "ca": "Pittsburgh",
+    "sa": "PA",
+    "z": "15237",
+    "co": "US"
+  },
+  "KS-3255": {
+    "n": "KS-3255",
+    "brand": "Kate Spade",
+    "officialNumber": "3255",
+    "a1": "2223 North Westshore Boulevard, Suite 221",
+    "ca": "Tampa",
+    "sa": "FL",
+    "z": "33607",
+    "co": "US"
+  },
+  "KS-3258": {
+    "n": "KS-3258",
+    "brand": "Kate Spade",
+    "officialNumber": "3258",
+    "a1": "2126 Abbott Martin Road, 215",
+    "ca": "Nashville",
+    "sa": "TN",
+    "z": "37215",
+    "co": "US"
+  },
+  "KS-3259": {
+    "n": "KS-3259",
+    "brand": "Kate Spade",
+    "officialNumber": "3259",
+    "a1": "3200 Las Vegas Boulevard South, 1330",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "KS-3265": {
+    "n": "KS-3265",
+    "brand": "Kate Spade",
+    "officialNumber": "3265",
+    "a1": "1450 Ala Moana Boulevard, 2057",
+    "ca": "Honolulu",
+    "sa": "HI",
+    "z": "96814",
+    "co": "US"
+  },
+  "KS-3267": {
+    "n": "KS-3267",
+    "brand": "Kate Spade",
+    "officialNumber": "3267",
+    "a1": "1 Garden State Plaza, 2111",
+    "ca": "Paramus",
+    "sa": "NJ",
+    "z": "07652",
+    "co": "US"
+  },
+  "KS-3288": {
+    "n": "KS-3288",
+    "brand": "Kate Spade",
+    "officialNumber": "3288",
+    "a1": "3500 Las Vegas Boulevard, Suite S10",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109",
+    "co": "US"
+  },
+  "KS-3294": {
+    "n": "KS-3294",
+    "brand": "Kate Spade",
+    "officialNumber": "3294",
+    "a1": "284 King Street",
+    "ca": "Charleston",
+    "sa": "SC",
+    "z": "29401",
+    "co": "US"
+  },
+  "KS-3299": {
+    "n": "KS-3299",
+    "brand": "Kate Spade",
+    "officialNumber": "3299",
+    "a1": "Ocean Avenue & Mission Street, 205B",
+    "ca": "Carmel",
+    "sa": "CA",
+    "z": "93921",
+    "co": "US"
+  },
+  "KS-3404": {
+    "n": "KS-3404",
+    "brand": "Kate Spade",
+    "officialNumber": "3404",
+    "a1": "#332 - 4800 Kingsway",
+    "ca": "Burnaby",
+    "sa": "BC",
+    "z": "V5H 4J2",
+    "co": "CA"
+  },
+  "KS-3409": {
+    "n": "KS-3409",
+    "brand": "Kate Spade",
+    "officialNumber": "3409",
+    "a1": "400 S. Baldwin Avenue, A14",
+    "ca": "Arcadia",
+    "sa": "CA",
+    "z": "91007",
+    "co": "US"
+  },
+  "KS-3419": {
+    "n": "KS-3419",
+    "brand": "Kate Spade",
+    "officialNumber": "3419",
+    "a1": "4525 La Jolla Village Dr, Suite D27",
+    "ca": "San Diego",
+    "sa": "CA",
+    "z": "92122",
+    "co": "US"
+  },
+  "KS-3420": {
+    "n": "KS-3420",
+    "brand": "Kate Spade",
+    "officialNumber": "3420",
+    "a1": "2 South Market Street, 2090B",
+    "ca": "Boston",
+    "sa": "MA",
+    "z": "02109",
+    "co": "US"
+  },
+  "KS-3588": {
+    "n": "KS-3588",
+    "brand": "Kate Spade",
+    "officialNumber": "3588",
+    "a1": "610 Fifth Avenue, Space C",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10020",
+    "co": "US"
+  },
+  "KS-3590": {
+    "n": "KS-3590",
+    "brand": "Kate Spade",
+    "officialNumber": "3590",
+    "a1": "20 Hudson Yard, Space RU110C",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "KS-3592": {
+    "n": "KS-3592",
+    "brand": "Kate Spade",
+    "officialNumber": "3592",
+    "a1": "160 North Gulph Road, Suite 1205B",
+    "ca": "King of Prussia",
+    "sa": "PA",
+    "z": "19406",
+    "co": "US"
+  },
+  "KS-4010": {
+    "n": "KS-4010",
+    "brand": "Kate Spade",
+    "officialNumber": "4010",
+    "a1": "40 logistic Drive",
+    "ca": "Walton",
+    "sa": "KY",
+    "z": "41094",
+    "co": "US"
+  },
+  "KS-5211": {
+    "n": "KS-5211",
+    "brand": "Kate Spade",
+    "officialNumber": "5211",
+    "a1": "45 Industrial Road, Suite 109",
+    "ca": "Cumberland",
+    "sa": "RI",
+    "z": "02864",
+    "co": "US"
+  },
+  "KS-5219-1": {
+    "n": "KS-5219-1",
+    "brand": "Kate Spade",
+    "officialNumber": "5219-1",
+    "a1": "5925-1 Wigwam Ave, Building 3A",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89139",
+    "co": "US"
+  },
+  "KS-5226": {
+    "n": "KS-5226",
+    "brand": "Kate Spade",
+    "officialNumber": "5226",
+    "a1": "6800 Kittimat Road, Unit 19-20",
+    "ca": "Mississauga",
+    "sa": "ON",
+    "z": "L5N5M1",
+    "co": "CA"
+  },
+  "KS-5234": {
+    "n": "KS-5234",
+    "brand": "Kate Spade",
+    "officialNumber": "5234",
+    "a1": "368 W Lincoln Street",
+    "ca": "Banning",
+    "sa": "CA",
+    "z": "92220",
+    "co": "US"
+  },
+  "KS-5239": {
+    "n": "KS-5239",
+    "brand": "Kate Spade",
+    "officialNumber": "5239",
+    "a1": "11 Elkay Drive, Unit 15",
+    "ca": "Chester",
+    "sa": "NY",
+    "z": "10918",
+    "co": "US"
+  },
+  "KS-5721": {
+    "n": "KS-5721",
+    "brand": "Kate Spade",
+    "officialNumber": "5721",
+    "a1": "4401 North Interstate Highway 35, Space 557",
+    "ca": "Round Rock",
+    "sa": "TX",
+    "z": "78664",
+    "co": "US"
+  },
+  "KS-5722": {
+    "n": "KS-5722",
+    "brand": "Kate Spade",
+    "officialNumber": "5722",
+    "a1": "549 South Chillicothe Road, Suite 480",
+    "ca": "Aurora",
+    "sa": "OH",
+    "z": "44202",
+    "co": "US"
+  },
+  "KS-5723": {
+    "n": "KS-5723",
+    "brand": "Kate Spade",
+    "officialNumber": "5723",
+    "a1": "375 US Route 1, T190",
+    "ca": "Kittery",
+    "sa": "ME",
+    "z": "03904",
+    "co": "US"
+  },
+  "KS-5724": {
+    "n": "KS-5724",
+    "brand": "Kate Spade",
+    "officialNumber": "5724",
+    "a1": "655 NY-318, Suite 80",
+    "ca": "Waterloo",
+    "sa": "NY",
+    "z": "13165",
+    "co": "US"
+  },
+  "KS-5725": {
+    "n": "KS-5725",
+    "brand": "Kate Spade",
+    "officialNumber": "5725",
+    "a1": "10455 Factory Shop Boulevards",
+    "ca": "Gulf Hills",
+    "sa": "MS",
+    "z": "39503",
+    "co": "US"
+  },
+  "KS-5726": {
+    "n": "KS-5726",
+    "brand": "Kate Spade",
+    "officialNumber": "5726",
+    "a1": "6401 West Marana Center Boulevard, Suite 119",
+    "ca": "Tucson",
+    "sa": "AZ",
+    "z": "85742",
+    "co": "US"
+  },
+  "KS-5727": {
+    "n": "KS-5727",
+    "brand": "Kate Spade",
+    "officialNumber": "5727",
+    "a1": "2200 Petaluma Boulevard North, Space 1105",
+    "ca": "Petaluma",
+    "sa": "CA",
+    "z": "94952",
+    "co": "US"
+  },
+  "KS-5728": {
+    "n": "KS-5728",
+    "brand": "Kate Spade",
+    "officialNumber": "5728",
+    "a1": "13801 Grant Street, Unit 100",
+    "ca": "Thornton",
+    "sa": "CO",
+    "z": "80023",
+    "co": "US"
+  },
+  "KS-5729": {
+    "n": "KS-5729",
+    "brand": "Kate Spade",
+    "officialNumber": "5729",
+    "a1": "1001 Stanley K. Tanger Blvd, Suite 101",
+    "ca": "Lancaster",
+    "sa": "PA",
+    "z": "17602",
+    "co": "US"
+  },
+  "KS-5730": {
+    "n": "KS-5730",
+    "brand": "Kate Spade",
+    "officialNumber": "5730",
+    "a1": "1771  Palm Beach Lakes Blvd, Space W303",
+    "ca": "West Palm Beach",
+    "sa": "FL",
+    "z": "33401",
+    "co": "US"
+  },
+  "KS-5731": {
+    "n": "KS-5731",
+    "brand": "Kate Spade",
+    "officialNumber": "5731",
+    "a1": "200 Tanger Outlet Boulevard, Suite 271",
+    "ca": "Pooler",
+    "sa": "GA",
+    "z": "31322",
+    "co": "US"
+  },
+  "KS-5732": {
+    "n": "KS-5732",
+    "brand": "Kate Spade",
+    "officialNumber": "5732",
+    "a1": "1213 Outlet Center Drive, Suite 1015",
+    "ca": "Smithfield",
+    "sa": "NC",
+    "z": "27577",
+    "co": "US"
+  },
+  "KS-5733": {
+    "n": "KS-5733",
+    "brand": "Kate Spade",
+    "officialNumber": "5733",
+    "a1": "258 Great Mall Drive",
+    "ca": "Milpitas",
+    "sa": "CA",
+    "z": "95035",
+    "co": "US"
+  },
+  "KS-5734": {
+    "n": "KS-5734",
+    "brand": "Kate Spade",
+    "officialNumber": "5734",
+    "a1": "1660 Lighthouse Place",
+    "ca": "Michigan City",
+    "sa": "IN",
+    "z": "46360",
+    "co": "US"
+  },
+  "KS-5735": {
+    "n": "KS-5735",
+    "brand": "Kate Spade",
+    "officialNumber": "5735",
+    "a1": "3925 Eagan Outlets Parkway, Suite 810",
+    "ca": "Eagan",
+    "sa": "MN",
+    "z": "55122",
+    "co": "US"
+  },
+  "KS-5736": {
+    "n": "KS-5736",
+    "brand": "Kate Spade",
+    "officialNumber": "5736",
+    "a1": "2700 State Road 16, Suite 109",
+    "ca": "Saint Augustine",
+    "sa": "FL",
+    "z": "32092",
+    "co": "US"
+  },
+  "KS-5739": {
+    "n": "KS-5739",
+    "brand": "Kate Spade",
+    "officialNumber": "5739",
+    "a1": "100 Premium Outlets Drive, Suite 715",
+    "ca": "Blackwood",
+    "sa": "NJ",
+    "z": "08012",
+    "co": "US"
+  },
+  "KS-5740": {
+    "n": "KS-5740",
+    "brand": "Kate Spade",
+    "officialNumber": "5740",
+    "a1": "3000 Grapevine Mills Parkway, Suite 220",
+    "ca": "Grapevine",
+    "sa": "TX",
+    "z": "76051",
+    "co": "US"
+  },
+  "KS-5741": {
+    "n": "KS-5741",
+    "brand": "Kate Spade",
+    "officialNumber": "5741",
+    "a1": "490 Premium Outlets Blvd",
+    "ca": "Lee",
+    "sa": "MA",
+    "z": "01238",
+    "co": "US"
+  },
+  "KS-5742": {
+    "n": "KS-5742",
+    "brand": "Kate Spade",
+    "officialNumber": "5742",
+    "a1": "561 S. Fork Ave SW, 561A1",
+    "ca": "North Bend",
+    "sa": "WA",
+    "z": "98045",
+    "co": "US"
+  },
+  "KS-5743": {
+    "n": "KS-5743",
+    "brand": "Kate Spade",
+    "officialNumber": "5743",
+    "a1": "3 DestinyUSA Drive, Suite L115",
+    "ca": "Syracuse",
+    "sa": "NY",
+    "z": "13204",
+    "co": "US"
+  },
+  "KS-5744": {
+    "n": "KS-5744",
+    "brand": "Kate Spade",
+    "officialNumber": "5744",
+    "a1": "2 Common Court, Suite K20",
+    "ca": "North Conway",
+    "sa": "NH",
+    "z": "03860",
+    "co": "US"
+  },
+  "KS-5745": {
+    "n": "KS-5745",
+    "brand": "Kate Spade",
+    "officialNumber": "5745",
+    "a1": "739 Pro Bass Drive NW, Unit 590",
+    "ca": "Altoona",
+    "sa": "IA",
+    "z": "50009",
+    "co": "US"
+  },
+  "KS-5746": {
+    "n": "KS-5746",
+    "brand": "Kate Spade",
+    "officialNumber": "5746",
+    "a1": "1001 N. Arney Road, Space 904",
+    "ca": "Woodburn",
+    "sa": "OR",
+    "z": "97071",
+    "co": "US"
+  },
+  "KS-5747": {
+    "n": "KS-5747",
+    "brand": "Kate Spade",
+    "officialNumber": "5747",
+    "a1": "120 Laconia Road, Suite 106",
+    "ca": "Tilton",
+    "sa": "NH",
+    "z": "03276",
+    "co": "US"
+  },
+  "KS-5748": {
+    "n": "KS-5748",
+    "brand": "Kate Spade",
+    "officialNumber": "5748",
+    "a1": "6200 Grand River Boulevard, Suite 638",
+    "ca": "Leeds",
+    "sa": "AL",
+    "z": "35094",
+    "co": "US"
+  },
+  "KS-5749": {
+    "n": "KS-5749",
+    "brand": "Kate Spade",
+    "officialNumber": "5749",
+    "a1": "500 Port of New Orleans Place, 117",
+    "ca": "New Orleans",
+    "sa": "LA",
+    "z": "70130",
+    "co": "US"
+  },
+  "KS-5750": {
+    "n": "KS-5750",
+    "brand": "Kate Spade",
+    "officialNumber": "5750",
+    "a1": "5000 Canoe Pass Way, 162",
+    "ca": "Tsawwassen",
+    "sa": "BC",
+    "z": "V4M 0B3",
+    "co": "CA"
+  },
+  "KS-5751": {
+    "n": "KS-5751",
+    "brand": "Kate Spade",
+    "officialNumber": "5751",
+    "a1": "901 Market Street, Space 1065",
+    "ca": "Philadelphia",
+    "sa": "PA",
+    "z": "19107",
+    "co": "US"
+  },
+  "KS-5752": {
+    "n": "KS-5752",
+    "brand": "Kate Spade",
+    "officialNumber": "5752",
+    "a1": "5220 Fashion Outlets",
+    "ca": "Rosemont",
+    "sa": "IL",
+    "z": "60018",
+    "co": "US"
+  },
+  "KS-5753": {
+    "n": "KS-5753",
+    "brand": "Kate Spade",
+    "officialNumber": "5753",
+    "a1": "11401 NW 12th Street, Suite 368",
+    "ca": "Sweetwater",
+    "sa": "FL",
+    "z": "33172",
+    "co": "US"
+  },
+  "KS-5754": {
+    "n": "KS-5754",
+    "brand": "Kate Spade",
+    "officialNumber": "5754",
+    "a1": "7051 S. Desert Blvd., #E581",
+    "ca": "Canutillo",
+    "sa": "TX",
+    "z": "79835",
+    "co": "US"
+  },
+  "SW-INTERNAL-001": {
+    "n": "SW-INTERNAL-001",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "2901 Bayview Avenue, Unit 14",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M2K 1E6",
+    "co": "CA"
+  },
+  "SW-INTERNAL-002": {
+    "n": "SW-INTERNAL-002",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "151 Bloor Street West, Suite 101",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M5S 1S4",
+    "co": "CA"
+  },
+  "SW-INTERNAL-003": {
+    "n": "SW-INTERNAL-003",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "925 Main Street, Unit B8",
+    "ca": "West Vancouver",
+    "sa": "BC",
+    "z": "V7T 2W4",
+    "co": "CA"
+  },
+  "SW-INTERNAL-004": {
+    "n": "SW-INTERNAL-004",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "50 Rideau Street, Unit 0373A",
+    "ca": "Ottawa",
+    "sa": "ON",
+    "z": "K1N 9J7",
+    "co": "CA"
+  },
+  "SW-INTERNAL-005": {
+    "n": "SW-INTERNAL-005",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "3401 Dufferin Street, #321A",
+    "ca": "Toronto",
+    "sa": "ON",
+    "z": "M6A 2T9",
+    "co": "CA"
+  },
+  "SW-INTERNAL-006": {
+    "n": "SW-INTERNAL-006",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "48650 Seminole Dr., Suite 186",
+    "ca": "Cabazon",
+    "sa": "CA",
+    "z": "08440",
+    "co": "US"
+  },
+  "SW-INTERNAL-007": {
+    "n": "SW-INTERNAL-007",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "1800 Sawgrass Mills Circle, Suite 2414B",
+    "ca": "Sunrise",
+    "sa": "FL",
+    "z": "33323",
+    "co": "US"
+  },
+  "SW-INTERNAL-008": {
+    "n": "SW-INTERNAL-008",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "804 Adirondack Way",
+    "ca": "Central Valley",
+    "sa": "NY",
+    "z": "10917",
+    "co": "US"
+  },
+  "SW-INTERNAL-009": {
+    "n": "SW-INTERNAL-009",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "19575 Biscayne Blvd, Room 693",
+    "ca": "Aventura",
+    "sa": "FL",
+    "z": "33180",
+    "co": "US"
+  },
+  "SW-INTERNAL-010": {
+    "n": "SW-INTERNAL-010",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "437 N. Rodeo Drive",
+    "ca": "Beverly Hills",
+    "sa": "CA",
+    "z": "90210",
+    "co": "US"
+  },
+  "SW-INTERNAL-011": {
+    "n": "SW-INTERNAL-011",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "10 Columbus Avenue, Space 101B",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10019",
+    "co": "US"
+  },
+  "SW-INTERNAL-012": {
+    "n": "SW-INTERNAL-012",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "7535 N Kendall Drive, Space 2460",
+    "ca": "Miami",
+    "sa": "FL",
+    "z": "33156-7704",
+    "co": "US"
+  },
+  "SW-INTERNAL-013": {
+    "n": "SW-INTERNAL-013",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "8687 North Central Expressway, Suite 1452",
+    "ca": "Dallas",
+    "sa": "TX",
+    "z": "75225",
+    "co": "US"
+  },
+  "SW-INTERNAL-014": {
+    "n": "SW-INTERNAL-014",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "685 Fifth Avenue",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10022",
+    "co": "US"
+  },
+  "SW-INTERNAL-015": {
+    "n": "SW-INTERNAL-015",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "5085 Westheimer Road, Suite 2620",
+    "ca": "Houston",
+    "sa": "TX",
+    "z": "77056",
+    "co": "US"
+  },
+  "SW-INTERNAL-016": {
+    "n": "SW-INTERNAL-016",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "160 North Gulph Road, 2644",
+    "ca": "King of Prussia",
+    "sa": "PA",
+    "z": "19406",
+    "co": "US"
+  },
+  "SW-INTERNAL-017": {
+    "n": "SW-INTERNAL-017",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "151 West 34th Street, 2nd Flr Shoes",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "SW-INTERNAL-018": {
+    "n": "SW-INTERNAL-018",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "390 Hackensack Avenue, Suite 136",
+    "ca": "Hackensack",
+    "sa": "NJ",
+    "z": "07601",
+    "co": "US"
+  },
+  "SW-INTERNAL-019": {
+    "n": "SW-INTERNAL-019",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "630 Old Country Road, Unit 84",
+    "ca": "Garden City",
+    "sa": "NY",
+    "z": "11530",
+    "co": "US"
+  },
+  "SW-INTERNAL-020": {
+    "n": "SW-INTERNAL-020",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "1200 Morris Turnpike, Space B-261",
+    "ca": "Short Hills",
+    "sa": "NJ",
+    "z": "07078",
+    "co": "US"
+  },
+  "SW-INTERNAL-021": {
+    "n": "SW-INTERNAL-021",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "118 Spring Street",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10012",
+    "co": "US"
+  },
+  "SW-INTERNAL-022": {
+    "n": "SW-INTERNAL-022",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "3333 Bristol Street, Suite 1855",
+    "ca": "Costa Mesa",
+    "sa": "CA",
+    "z": "92626",
+    "co": "US"
+  },
+  "SW-INTERNAL-023": {
+    "n": "SW-INTERNAL-023",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "125 Westchester Avenue, Space 1085B",
+    "ca": "White Plains",
+    "sa": "NY",
+    "z": "10601",
+    "co": "US"
+  },
+  "SW-INTERNAL-024": {
+    "n": "SW-INTERNAL-024",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "185 Greenwhich Street, Suite LL4028",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10007",
+    "co": "US"
+  },
+  "SW-INTERNAL-025": {
+    "n": "SW-INTERNAL-025",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "13850 Steeles Avenue West, Unit 404",
+    "ca": "Halton Hills",
+    "sa": "ON",
+    "z": "L7G 0J1",
+    "co": "CA"
+  },
+  "SW-INTERNAL-026": {
+    "n": "SW-INTERNAL-026",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "5220 Fashion Outlets Way, Suite 2130",
+    "ca": "Rosemont",
+    "sa": "IL",
+    "z": "60018",
+    "co": "US"
+  },
+  "SW-INTERNAL-027": {
+    "n": "SW-INTERNAL-027",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "3327 Las Vegas Blvd., South, Space 2944",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89109-1414",
+    "co": "US"
+  },
+  "SW-INTERNAL-028": {
+    "n": "SW-INTERNAL-028",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "20 Hudson Yards, Space RU111A",
+    "ca": "New York",
+    "sa": "NY",
+    "z": "10001",
+    "co": "US"
+  },
+  "SW-INTERNAL-029": {
+    "n": "SW-INTERNAL-029",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "3644 Livermore Premium Outlets Drive, Suite 1344",
+    "ca": "Livermore",
+    "sa": "CA",
+    "z": "94551",
+    "co": "US"
+  },
+  "SW-INTERNAL-030": {
+    "n": "SW-INTERNAL-030",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "3939 IH-35 South, Suite 1140",
+    "ca": "San Marcos",
+    "sa": "TX",
+    "z": "78666",
+    "co": "US"
+  },
+  "SW-INTERNAL-031": {
+    "n": "SW-INTERNAL-031",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "10600 Quil Ceda Boulevard, Suite 527",
+    "ca": "Tulalip",
+    "sa": "WA",
+    "z": "98271",
+    "co": "US"
+  },
+  "SW-INTERNAL-032": {
+    "n": "SW-INTERNAL-032",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "7899 Templeton Station Road, Suite 128",
+    "ca": "Richmond",
+    "sa": "BC",
+    "z": "V7B0B7",
+    "co": "CA"
+  },
+  "SW-INTERNAL-033": {
+    "n": "SW-INTERNAL-033",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "795 S Grand Central Parkway, Suite 2215",
+    "ca": "Las Vegas",
+    "sa": "NV",
+    "z": "89106",
+    "co": "US"
+  },
+  "SW-INTERNAL-034": {
+    "n": "SW-INTERNAL-034",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "800 Highway 400 S., Space #925",
+    "ca": "Dawsonville",
+    "sa": "GA",
+    "z": "30534",
+    "co": "US"
+  },
+  "SW-INTERNAL-035": {
+    "n": "SW-INTERNAL-035",
+    "brand": "Stuart Weitzman",
+    "officialNumber": "",
+    "a1": "1 Premium Outlet Blvd., Space #260",
+    "ca": "Wrentham",
+    "sa": "MA",
+    "z": "02093",
+    "co": "US"
+  }
+}

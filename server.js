@@ -1807,8 +1807,10 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       return res.status(400).json({ success: false, error: 'The Catalog order is missing its AALS reference.' });
     }
 
+    const preparedOrder = await tapestryRouting.prepare(orderForCin7,supabaseRest,getAuthToken(req),'orders',{cin7Fetch,CIN7_BASE_URL});
     const existingCin7Order = await findCatalogOrderInCin7V40(businessReference);
     if (existingCin7Order) {
+      if(tapestryRouting.isTapestry(preparedOrder))tapestryRouting.assertCustomer(existingCin7Order,preparedOrder);
       const existingResult = {
         success: true,
         already_exists: true,
@@ -1819,7 +1821,7 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       return res.json(existingResult);
     }
 
-    const preparedOrder = await tapestryRouting.prepare(orderForCin7,supabaseRest,getAuthToken(req));
+    // Tapestry routing and shared billing were verified before the duplicate lookup.
     if(tapestryRouting.isTapestry(preparedOrder) && preparedOrder.cin7_order_id)throw new Error('This Tapestry order is already linked to Cin7. Refresh Operations instead of sending it again.');
     const salesOrder = buildCin7SalesOrder(preparedOrder, catalogUser);
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
@@ -1841,6 +1843,12 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
       });
     }
 
+    if(tapestryRouting.isTapestry(preparedOrder)){
+      const newId=result.Id||result.id;
+      if(!newId)throw new Error('Cin7 returned no order ID. Check the existing reference before retrying.');
+      const verifiedLive=await cin7Fetch(CIN7_BASE_URL+'/SalesOrders/'+encodeURIComponent(newId));
+      tapestryRouting.assertCustomer(Array.isArray(verifiedLive)?verifiedLive[0]:(verifiedLive?.SalesOrder||verifiedLive?.salesOrder||verifiedLive),preparedOrder);
+    }
     const createdResult = {
       success: true,
       cin7_order_id: result.Id || result.id,
@@ -2922,5 +2930,6 @@ module.exports = {
 // Default window is current-year June and July:
 // start = YYYY-06-01, end exclusive = YYYY-08-01.
 // Existing Operations changes are still preserved because v16 ignore-duplicates remains active.
+
 
 
