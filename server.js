@@ -360,7 +360,15 @@ async function verifyAdmin(req) {
   const user = await userRes.json().catch(() => null);
 
   if (!userRes.ok || !user?.email) {
-    throw new Error('Could not verify Supabase user.');
+    const authCode = String(user?.error_code || user?.code || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+    let reason = 'Supabase rejected the portal session.';
+    if (authCode === 'session_not_found' || authCode === 'refresh_token_not_found' || authCode === 'bad_jwt' || authCode === 'jwt_expired') {
+      reason = 'The portal session is invalid or expired. Sign out and sign in again.';
+    }
+    if (userRes.status === 401 && /invalid api key/i.test(String(user?.message || user?.msg || ''))) {
+      reason = 'The server Supabase API key is invalid. Check SUPABASE_ANON_KEY in Render.';
+    }
+    throw new Error('Could not verify Supabase user. ' + reason + ' [Supabase HTTP ' + userRes.status + (authCode ? ', code ' + authCode : '') + ']');
   }
 
   const email = String(user.email || '').toLowerCase();
