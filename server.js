@@ -20,6 +20,7 @@ const CIN7_API_KEY = process.env.CIN7_PLATFORMS_API_KEY;
 const CIN7_BASE_URL = (process.env.CIN7_BASE_URL || 'https://api.cin7.com/api/v1').replace(/\/$/, '');
 const CIN7_REQUEST_TIMEOUT_MS = 12_000;
 const CIN7_MAX_ATTEMPTS = 3;
+let cin7BlockedUntil = 0;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -115,6 +116,21 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function cin7RateLimitError() {
+  const retryAfterSeconds = Math.max(1, Math.ceil((cin7BlockedUntil - Date.now()) / 1000));
+  const retryAt = new Date(cin7BlockedUntil).toISOString();
+  return Object.assign(new Error(`Cin7 API error 429: rate limit reached. Retry after ${retryAt}.`), { retryAfterSeconds });
+}
+
+function sendCin7SyncError(res, error) {
+  if (error.retryAfterSeconds) {
+    res.set('Retry-After', String(error.retryAfterSeconds));
+    res.set('Access-Control-Expose-Headers', 'Retry-After');
+    return res.status(429).json({ success: false, error: error.message });
+  }
+  return res.status(500).json({ success: false, error: error.message });
+}
+
 async function cin7Fetch(url, options = {}) {
   const controller = new AbortController();
   const deadline = Date.now() + CIN7_REQUEST_TIMEOUT_MS;
@@ -124,6 +140,7 @@ async function cin7Fetch(url, options = {}) {
 
   try {
     for (attempt = 1; attempt <= CIN7_MAX_ATTEMPTS; attempt++) {
+      if (Date.now() < cin7BlockedUntil) throw cin7RateLimitError();
       const res = await fetch(url, {
         ...options,
         signal: controller.signal,
@@ -141,11 +158,14 @@ async function cin7Fetch(url, options = {}) {
           : Date.parse(retryAfter) - Date.now();
         const backoffMs = 1000 * 2 ** (attempt - 1);
         const waitMs = Number.isFinite(retryAfterMs) ? Math.max(backoffMs, retryAfterMs) : backoffMs;
-        const willRetry = attempt < CIN7_MAX_ATTEMPTS && waitMs < deadline - Date.now();
+        const now = Date.now();
+        cin7BlockedUntil = Math.max(cin7BlockedUntil, now + waitMs);
+        const pauseMs = cin7BlockedUntil - now;
+        const willRetry = attempt < CIN7_MAX_ATTEMPTS && cin7BlockedUntil < deadline;
         console.warn('Cin7 upstream response', { endpoint, status: res.status, attempt, willRetry, retryAfterMs: Number.isFinite(retryAfterMs) ? retryAfterMs : null });
         res.body.destroy();
-        if (!willRetry) throw new Error('Cin7 API error 429: rate limit reached. Try again later.');
-        await sleep(waitMs);
+        if (!willRetry) throw cin7RateLimitError();
+        await sleep(pauseMs);
         continue;
       }
 
@@ -776,7 +796,7 @@ app.get('/api/catalog-code-index', async (req, res) => {
       index
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendCin7SyncError(res, err);
   }
 });
 
@@ -925,14 +945,25 @@ async function applyApprovedInventoryV37(row, token, stockSnapshot = null) {
   inventoryOrderPendingV37.set(id,work);
   return work;
 }
-async function reconcileApprovedInventoryV37(rows, token) {
+async function reconcileApprovedInventoryV37(rows, token, limit = Infinity) {
   let updated=0;
   // Only the new import workflow is reconciled; historical/manual statuses are
   // preserved. Approval in the updated portal also classifies the order directly.
   const eligible=rows.filter(row=>canRecheck(row) && (String(row.notes||'').includes('[AALS INVENTORY V37]') || isCatalog(row)));
+  if (!eligible.length) return updated;
+  if (Number.isFinite(limit)) {
+    eligible.sort((a,b) => (Date.parse(a.updated_at) || 0) - (Date.parse(b.updated_at) || 0));
+  }
   let stock;
-  if(eligible.length)try{stock=await inventorySnapshotV37();}catch(_){}
-  for (const row of eligible) {
+  try { stock=await inventorySnapshotV37(); }
+  catch (error) {
+    if (Number.isFinite(limit)) {
+      console.warn('Scheduled inventory recheck deferred:', error.message);
+      return updated;
+    }
+  }
+  for (const row of eligible.slice(0, limit)) {
+    if (Number.isFinite(limit) && Date.now() < cin7BlockedUntil) break;
     try { const result=await applyApprovedInventoryV37(row,token,stock); if(result.changed)updated++; }
     catch(error) { console.warn('Inventory classification deferred for order '+row.id+': '+error.message); }
   }
@@ -1395,29 +1426,39 @@ function sortCin7SalesOrdersLikeCin7V14(items) {
   });
 }
 
-async function fetchCin7SalesOrdersForImport({ rows = 250, startDate = null } = {}) {
+async function fetchCin7SalesOrdersForImport({ rows = 250, where = '' } = {}) {
   const safeRows = Math.min(Math.max(parseInt(rows, 10) || 250, 1), 250);
   const all = [];
   let page = 1;
+  let lastId = 0;
   const seenPages = new Set();
 
-  // Read every page required to cover the open-ended date window. There is no
-  // fixed record/page cap: stop at the end of Cin7 results or after reaching
-  // a full page whose dated records are all older than the start date.
+  // The sync window uses ID pagination so edits that remove an order from the
+  // window cannot shift the remaining rows past an offset.
   while (true) {
-    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}`;
+    const filters = where ? '&order=id%20asc&where=' + encodeURIComponent(where + ' AND id>' + lastId) : '';
+    const url = `${CIN7_BASE_URL}/SalesOrders?rows=${safeRows}&page=${page}${filters}`;
     const data = await cin7Fetch(url);
     const items = normalizeCin7OrderList(data);
 
     if (!items.length) break;
-    const fingerprint = JSON.stringify(items.map(item => pickFirst(item, ['Id','ID','id','SalesOrderID','Code','Ref'])));
-    if (seenPages.has(fingerprint)) throw new Error('Cin7 repeated a results page; sync stopped to avoid an incomplete import.');
-    seenPages.add(fingerprint);
+    if (where) {
+      for (const item of items) {
+        const id = Number(pickFirst(item, ['Id', 'ID', 'id', 'SalesOrderID']));
+        if (!Number.isSafeInteger(id) || id <= lastId) {
+          throw new Error('Cin7 returned out-of-order Sales Order IDs. The sync cursor was not advanced.');
+        }
+        lastId = id;
+      }
+    } else {
+      const fingerprint = JSON.stringify(items.map(item => pickFirst(item, ['Id','ID','id','SalesOrderID','Code','Ref'])));
+      if (seenPages.has(fingerprint)) throw new Error('Cin7 repeated a results page; sync stopped to avoid an incomplete import.');
+      seenPages.add(fingerprint);
+      page++;
+    }
+
     all.push(...items);
-
-    // Do not infer ordering from a page: scan to the actual end of Cin7 results.
-
-    page++;
+    if (where && items.length < safeRows) break;
     await sleep(350);
   }
 
@@ -1605,36 +1646,86 @@ app.post('/api/bbw-invoice-statement',async(req,res)=>{
   res.json({success:true,from,to,date_basis:'Cin7 invoice date (UTC)',checked_at:new Date().toISOString(),...makeStatement(invoices,visible,from,to)});
  }catch(error){res.status(500).json({success:false,error:error.message});}
 });
+
+const SALES_ORDER_CURSOR_OVERLAP_MS = 5 * 60 * 1000;
+const INVENTORY_RECHECK_INTERVAL_MS = 30 * 60 * 1000;
+const INVENTORY_RECHECK_BATCH_SIZE = 20;
+let salesOrderSyncRunning = false;
+let lastScheduledInventoryRecheckAt = 0;
+
+async function saveSalesOrderCursor(token, syncKey, previousCursor, values) {
+  if (previousCursor) {
+    // A second instance may have completed a sync during a Render rollout.
+    const path = `aals_integration_sync_state?sync_key=eq.${syncKey}&last_cursor=eq.${encodeURIComponent(previousCursor)}`;
+    return supabaseRest(path, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(values)
+    }, token);
+  }
+  return supabaseRest('aals_integration_sync_state?on_conflict=sync_key', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify([{ sync_key: syncKey, ...values }])
+  }, token);
+}
+
 app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
+  let ownsSync = false;
   try {
     const adminUser = await verifyAdmin(req);
     const token = getAuthToken(req);
+    if (Date.now() < cin7BlockedUntil) throw cin7RateLimitError();
+    if (salesOrderSyncRunning) {
+      return res.status(409).json({ success: false, error: 'A Cin7 Sales Order sync is already running.' });
+    }
+    salesOrderSyncRunning = ownsSync = true;
 
     const rows = req.body?.rows || req.query.rows || 250;
 
     // v23 date window:
     // Default: Start at 2026-06-01 and do NOT use a fixed end date.
-    // This means every sync imports new Cin7 orders from June 1, 2026 forward.
+    // This scopes both the initial import and subsequent incremental syncs.
     // Existing Operations records are preserved by ignore-duplicates below.
     // Optional override:
     // CIN7_SYNC_START_DATE=2026-06-01
     // Optional temporary cap only if explicitly needed:
     // CIN7_SYNC_END_DATE=YYYY-MM-DD
     const defaultStartV17 = new Date('2026-06-01T00:00:00');
+    const requestedStart = req.body?.start_date || req.query.start_date;
+    const requestedEnd = req.body?.end_date || req.query.end_date;
     const startDateV17 = parseCin7SyncDateV17(
-      req.body?.start_date || req.query.start_date || process.env.CIN7_SYNC_START_DATE,
+      requestedStart || process.env.CIN7_SYNC_START_DATE,
       defaultStartV17
     );
 
-    const explicitEndV23 = req.body?.end_date || req.query.end_date || process.env.CIN7_SYNC_END_DATE || null;
+    const explicitEndV23 = requestedEnd || process.env.CIN7_SYNC_END_DATE || null;
     const endDateV17 = explicitEndV23 ? parseCin7SyncDateV17(explicitEndV23, null) : null;
 
-    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, startDate: startDateV17 });
+    // An explicit backfill is independent of the recurring sync's cursor.
+    const backfill = Boolean(requestedStart || requestedEnd);
+    const syncKey = `cin7_sales_orders_${startDateV17.getTime()}_${endDateV17?.getTime() ?? 'open'}`;
+    const windowEnd = new Date(Math.floor(Date.now() / 1000) * 1000);
+    const toCin7Date = date => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    let previousCursor = '';
+    let where = '';
+    if (!backfill) {
+      const saved = await supabaseRest(`aals_integration_sync_state?sync_key=eq.${syncKey}&select=last_cursor`, {}, token);
+      previousCursor = saved?.[0]?.last_cursor || '';
+      const previousMs = previousCursor ? Date.parse(previousCursor) : 0;
+      if (!Number.isFinite(previousMs) || previousMs > windowEnd.getTime()) {
+        throw new Error('The saved Cin7 Sales Order cursor is invalid or in the future.');
+      }
+      const from = new Date(Math.max(startDateV17.getTime(), previousMs - SALES_ORDER_CURSOR_OVERLAP_MS));
+      const lowerField = previousCursor ? 'modifieddate' : 'createddate';
+      where = `${lowerField}>='${toCin7Date(from)}' AND modifieddate<'${toCin7Date(windowEnd)}'`;
+    }
+    const cin7OrdersAll = await fetchCin7SalesOrdersForImport({ rows, where });
     const cin7Orders = filterCin7OrdersByDateRangeV17(cin7OrdersAll, startDateV17, endDateV17);
 
     const voidOrdersV25 = cin7Orders.filter(cin7IsVoidOrderV25);
     const activeCin7OrdersV25 = cin7Orders.filter(order => !cin7IsVoidOrderV25(order));
-    const existingOperationsRowsV25 = await fetchOperationsOrdersV25(token);
+    const inventoryDue = Date.now() - lastScheduledInventoryRecheckAt >= INVENTORY_RECHECK_INTERVAL_MS;
+    const existingOperationsRowsV25 = cin7Orders.length || inventoryDue
+      ? await fetchOperationsOrdersV25(token) : [];
     const cancelledFromVoidV25 = await reconcileVoidCin7OrdersV25(
       voidOrdersV25,
       existingOperationsRowsV25,
@@ -1671,24 +1762,6 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       });
 
     await importedInventoryV37(normalized);
-    const inventoryRecheckedV37=await reconcileApprovedInventoryV37(existingOperationsRowsV25,token);
-    if (!normalized.length) {
-      return res.json({
-        success: true,
-        imported: 0,
-        inventory_rechecked: inventoryRecheckedV37,
-        fetched: cin7Orders.length,
-        skipped_void: voidOrdersV25.length,
-        cancelled_from_void: cancelledFromVoidV25,
-        matched_existing_by_reference: matchedExistingByReferenceV25,
-        linked_existing: linkedExistingV33,
-        identity_conflicts: identityConflictsV33,
-        message: voidOrdersV25.length
-          ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
-          : 'No new Cin7 sales orders found to import.',
-        rows
-      });
-    }
 
     // v16 IMPORTANT:
     // Use ignore-duplicates instead of merge-duplicates.
@@ -1696,7 +1769,7 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
     // Existing Operations records are preserved so manual changes such as:
     // Approved status, notes, tracking, ETA/ETD, carrier, and internal follow-up
     // are not overwritten by the next Cin7 sync.
-    const imported = await supabaseRest(
+    const imported = normalized.length ? await supabaseRest(
       'orders?on_conflict=external_source,external_id',
       {
         method: 'POST',
@@ -1706,15 +1779,35 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
         body: JSON.stringify(normalized)
       },
       token
-    );
+    ) : [];
 
     const insertedRows = Array.isArray(imported) ? imported : [];
+    if (!backfill) {
+      const completedAt = new Date().toISOString();
+      await saveSalesOrderCursor(token, syncKey, previousCursor, {
+        last_cursor: windowEnd.toISOString(),
+        last_started_at: windowEnd.toISOString(),
+        last_completed_at: completedAt,
+        last_status: 'success',
+        last_message: 'Cin7 Sales Orders processed through the sync window.',
+        last_count: insertedRows.length,
+        updated_by_email: adminUser.email,
+        updated_at: completedAt
+      });
+    }
+
+    let inventoryRecheckedV37 = 0;
+    if (inventoryDue && Date.now() >= cin7BlockedUntil) {
+      lastScheduledInventoryRecheckAt = Date.now();
+      inventoryRecheckedV37 = await reconcileApprovedInventoryV37(existingOperationsRowsV25, token, INVENTORY_RECHECK_BATCH_SIZE);
+    }
 
     res.json({
       success: true,
       fetched: cin7Orders.length,
-      fetched_before_date_filter: typeof cin7OrdersAll !== 'undefined' ? cin7OrdersAll.length : cin7Orders.length,
+      fetched_before_date_filter: cin7OrdersAll.length,
       imported: insertedRows.length,
+      inventory_rechecked: inventoryRecheckedV37,
       skipped_existing: Math.max(0, normalized.length - insertedRows.length) + matchedExistingByReferenceV25,
       matched_existing_by_reference: matchedExistingByReferenceV25,
         linked_existing: linkedExistingV33,
@@ -1722,14 +1815,18 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       skipped_void: voidOrdersV25.length,
       cancelled_from_void: cancelledFromVoidV25,
       source: 'cin7_sales_orders',
-      sync_mode: 'v25_reference_dedupe_void_reconciliation_preserve_operations_changes',
+      sync_mode: backfill ? 'manual_date_backfill' : 'incremental_modified_date',
       date_filter: {
         start_date: startDateV17.toISOString().slice(0, 10),
         end_date_exclusive: endDateV17 ? endDateV17.toISOString().slice(0, 10) : null,
         end_mode: endDateV17 ? 'explicit_end_date' : 'open_ended_from_2026_06_01_forward'
       },
       rows,
-      message: 'Cin7 Sync imported only new active references. Void orders were excluded and matching Operations records were cancelled.',
+      message: normalized.length
+        ? 'Cin7 Sync imported only new active references. Void orders were excluded and matching Operations records were cancelled.'
+        : voidOrdersV25.length
+          ? 'Void Cin7 orders were excluded from import and matching Operations records were cancelled.'
+          : 'No new Cin7 sales orders found to import.',
       orders: insertedRows.map(o => ({
         id: o.id,
         order_number: o.order_number,
@@ -1742,7 +1839,9 @@ app.post('/api/sync-cin7-orders-to-operations', async (req, res) => {
       }))
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendCin7SyncError(res, err);
+  } finally {
+    if (ownsSync) salesOrderSyncRunning = false;
   }
 });
 
