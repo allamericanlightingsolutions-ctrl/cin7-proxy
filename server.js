@@ -18,6 +18,8 @@ function tomorrowIsoDateV21(){
 const CIN7_USERNAME = process.env.CIN7_PLATFORMS_USERNAME;
 const CIN7_API_KEY = process.env.CIN7_PLATFORMS_API_KEY;
 const CIN7_BASE_URL = (process.env.CIN7_BASE_URL || 'https://api.cin7.com/api/v1').replace(/\/$/, '');
+const CIN7_REQUEST_TIMEOUT_MS = 12_000;
+const CIN7_MAX_ATTEMPTS = 3;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -114,33 +116,60 @@ function sleep(ms) {
 }
 
 async function cin7Fetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Authorization': authHeader(),
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
-  });
+  const controller = new AbortController();
+  const deadline = Date.now() + CIN7_REQUEST_TIMEOUT_MS;
+  const timeout = setTimeout(() => controller.abort(), CIN7_REQUEST_TIMEOUT_MS);
+  const endpoint = url.slice(CIN7_BASE_URL.length + 1).split(/[/?]/, 1)[0];
+  let attempt = 0;
 
-  if (res.status === 429) {
-    await sleep(1000);
-    return cin7Fetch(url, options);
-  }
-
-  const text = await res.text();
-  let data;
   try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
+    for (attempt = 1; attempt <= CIN7_MAX_ATTEMPTS; attempt++) {
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Authorization': authHeader(),
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      });
 
-  if (!res.ok) {
-    throw new Error(`Cin7 API error ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
-  }
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('retry-after');
+        const retryAfterMs = /^\d+$/.test(retryAfter || '')
+          ? Number(retryAfter) * 1000
+          : Date.parse(retryAfter) - Date.now();
+        const backoffMs = 1000 * 2 ** (attempt - 1);
+        const waitMs = Number.isFinite(retryAfterMs) ? Math.max(backoffMs, retryAfterMs) : backoffMs;
+        const willRetry = attempt < CIN7_MAX_ATTEMPTS && waitMs < deadline - Date.now();
+        console.warn('Cin7 upstream response', { endpoint, status: res.status, attempt, willRetry, retryAfterMs: Number.isFinite(retryAfterMs) ? retryAfterMs : null });
+        res.body.destroy();
+        if (!willRetry) throw new Error('Cin7 API error 429: rate limit reached. Try again later.');
+        await sleep(waitMs);
+        continue;
+      }
 
-  return data;
+      if (!res.ok) console.warn('Cin7 upstream response', { endpoint, status: res.status, attempt });
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Cin7 API error ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+      }
+      return data;
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) throw error;
+    console.warn('Cin7 upstream timeout', { endpoint, attempt, timeoutMs: CIN7_REQUEST_TIMEOUT_MS });
+    throw new Error(`Cin7 API request timed out after ${CIN7_REQUEST_TIMEOUT_MS / 1000} seconds. Try again later.`);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function fetchAllPages(endpoint, extraParams = '') {
