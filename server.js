@@ -1,4 +1,5 @@
 const express = require('express');
+const { createCin7Usage } = require('./cin7-usage');
 const {makeStatement}=require('./invoice-statement');
 const fetch = require('node-fetch');
 const cors = require('cors');
@@ -107,6 +108,33 @@ function mapCin7StatusV12(status, tracking){
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+const cin7Usage = createCin7Usage({
+  enabled: process.env.CIN7_USAGE_ENABLED === 'true',
+  databaseUrl: SUPABASE_URL,
+  serviceKey: SUPABASE_SERVICE_ROLE_KEY,
+  alertRecipients: process.env.CIN7_USAGE_ALERT_RECIPIENTS,
+  alertAt: Number(process.env.CIN7_USAGE_ALERT_AT || 4000),
+  fetch,
+  sendEmail: (message) => sendResendEmailV18({fromEmail:process.env.FROM_EMAIL || "onboarding@resend.dev", ...message}),
+});
+app.use(cin7Usage.middleware);
+
+app.get('/api/admin/cin7-usage', async (req, res) => {
+  try {
+    await verifyAdmin(req);
+  } catch {
+    return res.status(403).json({success:false,error:'Administrator access is required.'});
+  }
+  if (!cin7Usage.active) {
+    return res.status(503).json({success:false,error:'Cin7 usage tracking is disabled.'});
+  }
+  try {
+    res.set('Cache-Control', 'no-store').json({success:true,usage:await cin7Usage.summary()});
+  } catch {
+    res.status(503).json({success:false,error:'Cin7 usage data is temporarily unavailable.'});
+  }
+});
+
 function authHeader() {
   const creds = Buffer.from(`${CIN7_USERNAME}:${CIN7_API_KEY}`).toString('base64');
   return `Basic ${creds}`;
@@ -141,7 +169,7 @@ async function cin7Fetch(url, options = {}) {
   try {
     for (attempt = 1; attempt <= CIN7_MAX_ATTEMPTS; attempt++) {
       if (Date.now() < cin7BlockedUntil) throw cin7RateLimitError();
-      const res = await fetch(url, {
+      const res = await cin7Usage.attempt(() => fetch(url, {
         ...options,
         signal: controller.signal,
         headers: {
@@ -149,7 +177,7 @@ async function cin7Fetch(url, options = {}) {
           'Content-Type': 'application/json',
           ...(options.headers || {})
         }
-      });
+      }), endpoint, options.method, attempt);
 
       if (res.status === 429) {
         const retryAfter = res.headers.get('retry-after');
@@ -2993,6 +3021,7 @@ const completeCatalogSalesOrder=require('./catalog-special-request').install(app
 require('./tapestry-quotes').install(app,{completeCatalogSalesOrder,verifyCatalogUser,getAuthToken,supabaseRest,cin7Fetch,CIN7_BASE_URL,fetchAllPagesSafe,normalizeCin7Product,buildCin7SalesOrder});
 
 if (require.main === module) {
+  if (cin7Usage.active) setInterval(cin7Usage.flush, 60_000).unref();
   app.listen(PORT, () => {
     console.log(`Proxy server running on port ${PORT}`);
   });
