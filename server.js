@@ -415,7 +415,7 @@ function normalizeCin7Product(p) {
 }
 
 
-async function verifyAdmin(req) {
+async function verifyAdmin(req, { staticOnly = false } = {}) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
@@ -464,6 +464,8 @@ async function verifyAdmin(req) {
   if ([...staticAdmins, ...fallbackAdmins].includes(email)) {
     return { ...user, email };
   }
+
+  if (staticOnly) throw new Error('A configured administrator is required.');
 
   // Shared Supabase admin table fallback
   try {
@@ -762,6 +764,11 @@ app.get('/api/product-sample', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+require('./bbw-catalog-products').install(app, {
+  verifyCatalogUser, verifyAdmin, supabaseRest, serviceKey: SUPABASE_SERVICE_ROLE_KEY,
+  cin7Fetch, baseUrl: CIN7_BASE_URL, normalizeCin7Product
 });
 
 app.get('/api/product-details/:code', async (req, res) => {
