@@ -1114,6 +1114,8 @@ app.get('/api/branches', async (req, res) => {
 
 // ─── Shipping rates endpoint, preserved from current proxy ───────────────────
 
+require('./tapestry-shipping').install(app, { fetch, verifyCatalogUser });
+
 app.post('/api/shipping-rates', async (req, res) => {
   try {
     const { toPostalCode, toCountry, weightLbs } = req.body;
