@@ -6,18 +6,23 @@ function isApproved(order){
 }
 async function resolve(order,token,rest){
  if(!order||!uuid.test(String(order.id||''))){
-  if(order?.catalog_client==='tapestry')throw Error('A saved Tapestry order is required.');
-  return {order,teamOrder:false};
+  throw Error(order?.catalog_client==='tapestry'?'A saved Tapestry order is required.':'A saved catalog order is required.');
  }
  const saved=await rest('orders?select=*&id=eq.'+encodeURIComponent(order.id)+'&limit=1',{},token);
  if(!saved?.[0])throw Error('This saved order is not available to your account.');
- if(saved[0].catalog_client!=='tapestry')return {order,teamOrder:false};
+ if(saved[0].catalog_client!=='tapestry'){
+  if(saved[0].source!=='catalog'||!(saved[0].catalog_client==='bbw'||saved[0].items?.[0]?.client==='Bath & Body Works'))return {order,teamOrder:false};
+  const checked=await rest('rpc/bbw_order_approval_v1',{method:'POST',body:JSON.stringify({p_order_id:order.id,p_action:'read'})},token);
+  if(!checked?.order||checked.approved_for_sync!==true)throw Error('BBW Team approval is required before sending this order to Cin7.');
+  return {order:checked.order,teamOrder:true,approvalRpc:'bbw_order_approval_v1'};
+ }
  const verified=await rest('rpc/tapestry_order_approval_v1',{method:'POST',body:JSON.stringify({p_order_id:order.id,p_action:'read'})},token);
  if(!verified?.order||verified.order.catalog_client!=='tapestry'||!isApproved(verified.order))throw Error('Aqua Team approval is required before sending this order to Cin7.');
  return {order:verified.order,teamOrder:true};
 }
 async function claim(order,token,rest){
- const result=await rest('rpc/tapestry_order_approval_v1',{method:'POST',body:JSON.stringify({p_order_id:order.id,p_action:'claim_sync'})},token);
+ const rpc=order.catalog_client==='tapestry'?'tapestry_order_approval_v1':'bbw_order_approval_v1';
+ const result=await rest('rpc/'+rpc,{method:'POST',body:JSON.stringify({p_order_id:order.id,p_action:'claim_sync'})},token);
  if(!result?.claimed)throw Error('This order is already synchronizing or requires AALS review. Refresh My Orders; no duplicate will be sent.');
 }
 module.exports={isApproved,resolve,claim};

@@ -683,7 +683,7 @@ function buildCin7SalesOrder(order, adminUser) {
 
   const salesOrder = {
     reference: orderNumber,
-    customerOrderNo: orderNumber,
+    customerOrderNo: cleanText(order.work_order_number || order.customer_po || first.work_order || first.customer_po || orderNumber, 120),
     stage: process.env.CIN7_DRAFT_STAGE || 'New',
     isApproved: false,
 
@@ -2048,7 +2048,7 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
 app.post('/api/send-order-to-cin7', async (req, res) => {
   try {
     const adminUser = await verifyAdmin(req);
-    const { order } = req.body;
+    let { order } = req.body;
 
     if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
     if (order.spr_active_request || (Array.isArray(order.items) && order.items.some(item => item.spr_request_id))) return res.status(400).json({ success:false,error:'This order is managed by its Catalog product request. Use Check linked order / synchronization there to avoid duplicates.' });
@@ -2059,7 +2059,12 @@ app.post('/api/send-order-to-cin7', async (req, res) => {
       return res.status(400).json({ success: false, error: 'This order already has a Cin7 order id.' });
     }
 
-    const salesOrder = await catalogTeamPricing.apply(buildCin7SalesOrder(order, adminUser),{cin7Fetch,CIN7_BASE_URL});
+    const approvalGuard=require('./tapestry-approval-guard');
+    const savedApproval=await approvalGuard.resolve(order,getAuthToken(req),supabaseRest);
+    order=savedApproval.order;
+    const preparedOrder=await tapestryRouting.prepare(order,supabaseRest,getAuthToken(req),'orders',{cin7Fetch,CIN7_BASE_URL});
+    const salesOrder = await catalogTeamPricing.apply(buildCin7SalesOrder(preparedOrder, adminUser),{cin7Fetch,CIN7_BASE_URL});
+    if(savedApproval.teamOrder)await approvalGuard.claim(order,getAuthToken(req),supabaseRest);
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
 
     const cin7Response = await cin7Fetch(endpoint, {
