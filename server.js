@@ -1945,9 +1945,12 @@ async function persistCatalogCin7LinkV40(order, result, token) {
 app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
   try {
     const catalogUser = await verifyCatalogUser(req);
-    const { order } = req.body || {};
+    let { order } = req.body || {};
 
     if (!order) return res.status(400).json({ success: false, error: 'Missing order payload.' });
+    const tapestryApproval = require('./tapestry-approval-guard');
+    const savedApproval = await tapestryApproval.resolve(order,getAuthToken(req),supabaseRest);
+    order = savedApproval.order;
     if (order.spr_active_request || (Array.isArray(order.items) && order.items.some(item => item.spr_request_id))) return res.status(400).json({ success:false,error:'This order is managed by its Catalog product request. Use Check linked order / synchronization there to avoid duplicates.' });
     if (order.quote_number && !order.order_number) {
       return res.status(400).json({ success: false, error: 'Only catalog orders can be sent to Cin7.' });
@@ -1961,7 +1964,7 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
 
     // Catalog users can send their own orders. Active AALS admins may recover a
     // failed order for another user from the Catalog admin panel.
-    if (orderEmail && tokenEmail && orderEmail !== tokenEmail) {
+    if (!savedApproval.teamOrder && orderEmail && tokenEmail && orderEmail !== tokenEmail) {
       try {
         await verifyAdmin(req);
       } catch (_) {
@@ -1996,6 +1999,7 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
 
     // Tapestry routing and shared billing were verified before the duplicate lookup.
     if(tapestryRouting.isTapestry(preparedOrder) && preparedOrder.cin7_order_id)throw new Error('This Tapestry order is already linked to Cin7. Refresh Operations instead of sending it again.');
+    if(savedApproval.teamOrder)await tapestryApproval.claim(orderForCin7,getAuthToken(req),supabaseRest);
     const salesOrder = buildCin7SalesOrder(preparedOrder, catalogUser);
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
 
