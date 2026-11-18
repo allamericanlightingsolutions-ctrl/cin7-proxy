@@ -640,6 +640,7 @@ function isValidEmail(value) {
 }
 
 const tapestryRouting = require('./tapestry-routing');
+const catalogTeamPricing = require('./catalog-team-pricing');
 function buildCin7SalesOrder(order, adminUser) {
   if(tapestryRouting.isTapestry(order))return tapestryRouting.build(order,adminUser);
   const first = getFirstItem(order);
@@ -1999,8 +2000,8 @@ app.post('/api/send-catalog-order-to-cin7', async (req, res) => {
 
     // Tapestry routing and shared billing were verified before the duplicate lookup.
     if(tapestryRouting.isTapestry(preparedOrder) && preparedOrder.cin7_order_id)throw new Error('This Tapestry order is already linked to Cin7. Refresh Operations instead of sending it again.');
+    const salesOrder = await catalogTeamPricing.apply(buildCin7SalesOrder(preparedOrder, catalogUser),{cin7Fetch,CIN7_BASE_URL});
     if(savedApproval.teamOrder)await tapestryApproval.claim(orderForCin7,getAuthToken(req),supabaseRest);
-    const salesOrder = buildCin7SalesOrder(preparedOrder, catalogUser);
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
 
     const cin7Response = await cin7Fetch(endpoint, {
@@ -2058,7 +2059,7 @@ app.post('/api/send-order-to-cin7', async (req, res) => {
       return res.status(400).json({ success: false, error: 'This order already has a Cin7 order id.' });
     }
 
-    const salesOrder = buildCin7SalesOrder(order, adminUser);
+    const salesOrder = await catalogTeamPricing.apply(buildCin7SalesOrder(order, adminUser),{cin7Fetch,CIN7_BASE_URL});
     const endpoint = `${CIN7_BASE_URL}/SalesOrders?loadboms=false`;
 
     const cin7Response = await cin7Fetch(endpoint, {

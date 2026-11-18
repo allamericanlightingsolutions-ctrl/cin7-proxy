@@ -1,4 +1,5 @@
 'use strict';
+const catalogTeamPricing=require('./catalog-team-pricing');
 const routing=require('./tapestry-routing');
 const {responseRows,validateExactProducts,attachMarkers,confirmedLines}=require('./catalog-special-request');
 const txt=x=>String(x??'').trim();
@@ -51,7 +52,7 @@ function install(app,deps){
    if(!complete)return res.json({success:true,complete:false,request,message:'Responses saved. Complete every row to create a Quote.'});
    rows=validateExactProducts(rows,(await fetchAllPagesSafe('products','')).map(normalizeCin7Product));
    const prepared=await routing.prepare(request,supabaseRest,token,'quotes',{cin7Fetch,CIN7_BASE_URL});
-   const payload=quotePayload(request,prepared,user,buildCin7SalesOrder);
+   const payload=await catalogTeamPricing.apply(quotePayload(request,prepared,user,buildCin7SalesOrder),{cin7Fetch,CIN7_BASE_URL});
    // Check the durable response snapshot under a row lock before any write to Cin7.
    const claim=await rpc('catalog_quote_write_v2',{p_request_id:requestId,p_action:'claim',p_lines:rows},token);
    if(claim.state==='sent')return res.json({success:true,complete:true,request:claim.request,message:'Quote already created.'});

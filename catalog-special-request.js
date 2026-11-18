@@ -1,4 +1,5 @@
 'use strict';
+const catalogTeamPricing=require('./catalog-team-pricing');
 const tapestryRouting=require('./tapestry-routing');
 
 const txt = value => String(value == null ? '' : value).trim();
@@ -112,6 +113,10 @@ function install(app, deps) {
       linked=true;
       order=await tapestryRouting.prepare(order,supabaseRest,token,'orders',{cin7Fetch,CIN7_BASE_URL});
       if (request.spr_sync_state==='sent') return res.json({success:true,complete:true,order,message:'This request is already linked to its sales order.'});
+      const pricingItems=request.spr_destination==='existing'?(order.items||[]).filter(item=>txt(item.spr_request_id)===requestId):order.items;
+      if(request.spr_destination==='existing'&&pricingItems.length!==rows.length)throw Error('Linked product rows do not match the request.');
+      const pricingOrder=tapestryRouting.isTapestry(order)?tapestryRouting.derive(order,{items:pricingItems}):{...order,items:pricingItems};
+      const pricedPayload=await catalogTeamPricing.apply(buildCin7SalesOrder(pricingOrder,user),{cin7Fetch,CIN7_BASE_URL});
       const claim=await rpc('catalog_spr_sync_v263',{p_request_id:requestId,p_action:'claim'},token);
       let live;
       if (!claim.claimed) {
@@ -128,6 +133,11 @@ function install(app, deps) {
           if (newItems.length!==rows.length) throw new Error('Linked product rows do not match the request.');
           const selected=tapestryRouting.isTapestry(order)?tapestryRouting.derive(order,{items:newItems}):{...order,items:newItems};
           const added=attachMarkers(buildCin7SalesOrder(selected,user),request);
+          added.lineItems=added.lineItems.map(line=>{
+            const priced=pricedPayload.lineItems.find(row=>txt(row.code)===txt(line.code));
+            if(!priced)throw Error('TEAMS pricing was not confirmed for '+line.code);
+            return {...line,unitPrice:priced.unitPrice,discount:0};
+          });
           const old=live.lineItems || live.LineItems;
           const last=Math.max(0,...old.map(line => Number(line.sort || line.Sort)||0));
           added.lineItems.forEach((line,index) => {line.sort=last+(index+1)*10;});
@@ -138,7 +148,7 @@ function install(app, deps) {
       } else {
         live=await exactLookup(order.order_number);
         if (!live) {
-          const payload=attachMarkers(buildCin7SalesOrder(order,user),request);
+          const payload=attachMarkers(pricedPayload,request);
           // Request submission authorizes the sale. Use SalesOrders, never Quotes.
           payload.stage='New';payload.isApproved=true;payload.customerOrderNo=request.spr_wo;
           payload.internalComments='Sales Order from catalog request '+request.quote_number+'. Authorized by requester submission. WO '+request.spr_wo+'. '+txt(order.notes);
